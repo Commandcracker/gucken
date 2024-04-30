@@ -24,43 +24,36 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+from textual.reactive import reactive
+from textual.screen import ModalScreen
+
+"""
+WIP all kinda shitty code
+"""
 
 # built-in modules
-from abc import ABC, abstractmethod
-import asyncio
-from html import unescape
-import re
-from subprocess import Popen
+from asyncio import gather
 from base64 import b64decode
 from dataclasses import dataclass
 from enum import Enum
+from html import unescape
+from re import search as re_search
 from shutil import which
-from time import time
+from subprocess import Popen
+from time import sleep, time
 
+from bs4 import BeautifulSoup
 # pip modules
 # import mpv
 # import ytdl
-import httpx
-from bs4 import BeautifulSoup
+from httpx import AsyncClient
 from rich import print
-from textual.widgets._toggle_button import ToggleButton
-
-from textual import events, work
+from textual import events, on, work
 from textual.app import App, ComposeResult
-from textual.containers import Center, Horizontal
-from textual.widgets import (
-    DataTable,
-    Footer,
-    Header,
-    Input,
-    Label,
-    ListItem,
-    ListView,
-    Markdown,
-    TabbedContent,
-    TabPane,
-    Checkbox,
-)
+from textual.containers import Center, Container, Horizontal
+from textual.widgets import (Button, Checkbox, DataTable, Footer, Header,
+                             Input, Label, ListItem, ListView, Markdown,
+                             TabbedContent, TabPane)
 
 
 @dataclass
@@ -70,6 +63,13 @@ class AniWorldSeriesSearchResult:
     short_description: str
     cover: str
     production_year: str
+    host: str
+
+    def get_url(self) -> str:
+        if self.host == "186.2.175.5":
+            return f"https://{self.host}/serie/stream/{self.link}"
+        else:
+            return f"https://{self.host}/anime/stream/{self.link}"
 
 
 class Hoster(Enum):
@@ -77,6 +77,12 @@ class Hoster(Enum):
     DOODSTREAM = "Doodstream"
     VIDOZA = "Vidoza"
     STREAMTAPE = "Streamtape"
+
+
+class VideoPlayer(Enum):
+    VLC = "vlc"
+    MPV = "mpv"
+    WMPLAYER = "wmplayer"
 
 
 class Language(Enum):
@@ -115,19 +121,11 @@ class AniWorldSeries:
     # filme
 
 
-class Provider(ABC):
-    @abstractmethod
-    async def search(self, keyword: str) -> list[AniWorldSeriesSearchResult] | None:
-        pass
-
-    @abstractmethod
-    async def get_info(self, link: str) -> AniWorldSeries | None:
-        pass
-
-
-async def search(keyword: str) -> list[AniWorldSeriesSearchResult] | None:
-    async with httpx.AsyncClient(verify=False) as client:
-        response = await client.get(f"https://186.2.175.5/ajax/seriesSearch?keyword={keyword}")
+async def search(host: str, keyword: str) -> list[AniWorldSeriesSearchResult] | None:
+    if keyword.strip() == "":
+        return None
+    async with AsyncClient(verify=False) as client:
+        response = await client.get(f"https://{host}/ajax/seriesSearch?keyword={keyword}")
         try:
             results = response.json()
             final = []
@@ -137,22 +135,24 @@ async def search(keyword: str) -> list[AniWorldSeriesSearchResult] | None:
                     link=series['link'],
                     short_description=unescape(series['description']),
                     cover=series['cover'],
-                    production_year=series['productionYear']
+                    production_year=series['productionYear'],
+                    host=host
                 ))
             return final
-        except Exception:
+        except Exception as e:
+            exit(e)
             return None
 
 
-async def get_veo_hls(url: str):
-    async with httpx.AsyncClient(verify=False) as client:
-        response = await client.get(url)
+async def get_veo_hls(series_search_result: AniWorldSeriesSearchResult, staffel: int, episode: int):
+    async with AsyncClient(verify=False) as client:
+        response = await client.get(f"{series_search_result.get_url()}/staffel-{staffel}/episode-{episode}")
         try:
             soup = BeautifulSoup(response.text, "html.parser")
             url = soup.find("a", class_="watchEpisode").attrs.get("href")
-            response = await client.get("https://186.2.175.5" + url, follow_redirects=True)
+            response = await client.get(f"https://{series_search_result.host}" + url, follow_redirects=True)
 
-            match_hls = re.search(r"'hls': '(.*?)'", response.text)
+            match_hls = re_search(r"'hls': '(.*?)'", response.text)
 
             if match_hls:
                 hls_link = match_hls.group(1)
@@ -160,16 +160,18 @@ async def get_veo_hls(url: str):
                 return None
 
             return b64decode(hls_link).decode()
-        except Exception:
+        except Exception as e:
+            exit(e)
             return None
 
 
 async def get_episodes_from_url(staffel: int, url: str) -> list[Episode]:
-    async with httpx.AsyncClient(verify=False) as client:
+    async with AsyncClient(verify=False) as client:
         response = await client.get(url)
         try:
             return await get_episodes_from_page(staffel, response.text)
-        except Exception:
+        except Exception as e:
+            exit(e)
             return None
 
 
@@ -218,9 +220,9 @@ async def get_episodes_from_soup(staffel: int, soup: BeautifulSoup) -> list[Epis
     return episodes
 
 
-async def get_info(link: str) -> AniWorldSeries | None:
-    async with httpx.AsyncClient(verify=False) as client:
-        response = await client.get(f"https://186.2.175.5/serie/stream/{link}")
+async def get_info(series_search_result: AniWorldSeriesSearchResult) -> AniWorldSeries | None:
+    async with AsyncClient(verify=False) as client:
+        response = await client.get(series_search_result.get_url())
         try:
             soup = BeautifulSoup(response.text, "html.parser")
 
@@ -252,9 +254,10 @@ async def get_info(link: str) -> AniWorldSeries | None:
                 if staffel.text != "Filme":
                     count += 1
                     if count > 1:
-                        funcs.append(get_episodes_from_url(count, f"https://186.2.175.5/serie/stream/{link}/staffel-{count}"))
+                        funcs.append(
+                            get_episodes_from_url(count, f"{series_search_result.get_url()}/staffel-{count}"))
 
-            eps = await asyncio.gather(
+            eps = await gather(
                 get_episodes_from_soup(1, soup),
                 *funcs
             )
@@ -265,7 +268,8 @@ async def get_info(link: str) -> AniWorldSeries | None:
                     feps.append(b)
 
             return AniWorldSeries(
-                cover="https://186.2.175.5" + soup.find("div", class_="seriesCoverBox").find("img").attrs.get(
+                cover=f"https://{series_search_result.host}" + soup.find("div", class_="seriesCoverBox").find(
+                    "img").attrs.get(
                     "data-src"),
                 name=unescape(soup.find("h1", attrs={"itemprop": "name"}).find("span").text),
                 production_year=unescape(soup.find("div", class_="series-title").find("small").text).lstrip(),
@@ -287,51 +291,34 @@ async def get_info(link: str) -> AniWorldSeries | None:
             return None
 
 
-current = None
+class Next(ModalScreen):
+    time = reactive(3)
 
-'''class CoolListView(ListView):
-    def watch_index(self, old_index, new_index):
-        if current is not None:
-            if self._is_valid_index(old_index):
-                series = current[old_index]
-                child = self._nodes[old_index]
-                assert isinstance(child, ListItem)
-                try:
-                    child.query_one(Markdown).update(
-                        f"##### **{series.name}** {series.production_year}\n{series.short_description}")
-                except NoMatches:
-                    pass
+    def __init__(self, question):
+        super().__init__()
+        self.question = question
 
-            if self._is_valid_index(new_index):
-                self.set_info(new_index)
+    def compose(self) -> ComposeResult:
+        with Container():
+            yield Label(self.question)
+            with Horizontal():
+                yield Button.error("Cancel", id="cancel")
+                yield Button.success("Next", id="next")
 
-        super().watch_index(old_index, new_index)
+    def on_mount(self) -> None:
+        self.set_interval(1, self.update_time)
+        self.query_one(Label).update(self.question + " " + str(self.time))
 
-    @work(exclusive=True)
-    async def set_info(self, index: int) -> None:
-        series = current[index]
-        url = f"https://186.2.175.5/serie/stream/{series.link}"
+    def update_time(self) -> None:
+        self.time = self.time - 1
+        if self.time < 0:
+            self.dismiss(True)
+        self.query_one(Label).update(self.question + " " + str(self.time))
 
-        async with httpx.AsyncClient(verify=False) as client:
-            response = await client.get(url)
-            try:
-                soup = BeautifulSoup(response.text, "html.parser")
-                try:
-                    full_description = unescape(
-                        soup.find("p", class_="seri_des").attrs.get("data-full-description"))
-                    child = self._nodes[index]
-                    assert isinstance(child, ListItem)
-                    try:
-                        await child.query_one(Markdown).update(
-                            f"##### **{series.name}** {series.production_year}\n{full_description}")
-                    except NoMatches:
-                        pass
-
-
-                except AttributeError:
-                    pass
-            except Exception:
-                pass'''
+    @on(Button.Pressed)
+    def exit_screen(self, event):
+        button_id = event.button.id
+        self.dismiss(button_id == "next")
 
 
 class ClickableListItem(ListItem):
@@ -340,19 +327,94 @@ class ClickableListItem(ListItem):
         self.last_click = None
 
     def on_click(self) -> None:
-        if self.last_click:
-            if time() - self.last_click < 0.5:
-                self.app.open_info(current[self.app.query_one("#results", ListView).index].link)
+        if self.last_click and time() - self.last_click < 0.5:
+            self.app.open_info()
         self.last_click = time()
+
+
+class ClickableDataTable(DataTable):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.last_click = {}
+
+    def on_click(self, event: events.Click) -> None:
+        meta = event.style.meta
+        if not "row" in meta or not "column" in meta:
+            return
+        row_index = meta["row"]
+        if row_index <= -1:
+            return
+        if self.last_click.get(row_index) and time() - self.last_click[row_index] < 0.5:
+            self.app.play_selected()
+        self.last_click[row_index] = time()
+
+
+def play_with_mpv(url: str, title: str, fullscreen: bool, path: str = "mpv") -> Popen:
+    return Popen([
+        path,
+        url,
+        "--fullscreen" if fullscreen else "",
+        f"--force-media-title={title}"
+    ])
+
+
+def play_with_vlc(url: str, title: str, fullscreen: bool, path: str = "vlc") -> Popen:
+    return Popen([
+        path,
+        url,
+        "--no-video-title-show",
+        "--fullscreen" if fullscreen else "",
+        f"--input-title-format={title}"
+    ])
+
+
+def play_with_wmplayer(
+        url: str,
+        title: str,
+        fullscreen: bool,
+        path: str = r"C:\Program Files (x86)\Windows Media Player\wmplayer.exe"
+) -> Popen:
+    return Popen([
+        path,
+        url,
+        "/fullscreen" if fullscreen else "",
+    ])
 
 
 class AniTUIApp(App):
     TITLE = "AniTUI"
+    CSS = """
+    Next {
+        align: center middle;
+    }
+    
+    Next > Container {
+        width: auto;
+        height: auto;
+        align: center middle;
+        padding: 1 2;
+        background: $panel;
+    }
+    
+    Next > Container > Label {
+        width: 100%;
+        content-align-horizontal: center;
+    }
+    
+    Next > Container > Horizontal {
+        height: auto;
+        width: auto;
+    }
+    
+    Next > Container > Horizontal > Button {
+        margin: 1 2;
+    }
+    """
 
     def __init__(self):
         super().__init__()
-        self.current = None
-        self.current_info = None
+        self.current: list[AniWorldSeriesSearchResult] | None = None
+        self.current_info: AniWorldSeries | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -365,7 +427,7 @@ class AniTUIApp(App):
             with TabPane("Info", id="info", disabled=True):
                 yield Markdown(id="markdown")
                 with Horizontal():
-                    yield DataTable()
+                    yield ClickableDataTable()
                 # with RadioSet():
                 #    yield RadioButton("VOE", id="voe", value=True)
                 #    yield RadioButton("Doodstream", id="doodstream")
@@ -388,9 +450,8 @@ class AniTUIApp(App):
                 severity="warning",
             )
 
-    async def on_checkbox_changed(self, event: ToggleButton.Changed):
-        if event.control.id == "aniworld_to":
-            exit(event.value)
+    async def on_checkbox_changed(self):
+        self.lookup_anime(self.query_one("#input", Input).value)
 
     async def on_input_changed(self, message: Input.Changed) -> None:
         if message.value:
@@ -400,68 +461,99 @@ class AniTUIApp(App):
 
     @work(exclusive=True)
     async def lookup_anime(self, keyword: str) -> None:
+
+        owos = []
+        if self.query_one("#aniworld_to", Checkbox).value:
+            owos.append(search("aniworld.to", keyword))
+
+        if self.query_one("#s_to", Checkbox).value:
+            owos.append(search("186.2.175.5", keyword))
+
         lv = self.query_one("#results", ListView)
         await lv.clear()
         await lv.set_loading(True)
-        results = await search(keyword)
-        if results is not None:
-            global current
-            current = results
-            for series in results:
+        results = await gather(*owos)
+        f_results = []
+        for l in results:
+            if l is not None:
+                for e in l:
+                    f_results.append(e)
+
+        if len(f_results) > 0:
+            self.current = f_results
+            for series in f_results:
                 await lv.append(ClickableListItem(Markdown(
                     f"##### **{series.name}** {series.production_year}\n{series.short_description}"
                 )))
         await lv.set_loading(False)
-        if len(results) > 0:
+        if len(f_results) > 0:
             lv.index = 0
 
     # Aim assist :D
     async def on_key(self, event: events.Key) -> None:
         key = event.key
-        if self.query_one(TabbedContent).active == "search":
-            lv = self.query_one("#results", ListView)
-            inp = self.query_one("#input", Input)
-            # Down to list
-            if key == "down":
-                if inp.has_focus:
-                    lv.focus()
-            # Up to Input
-            if key == "up":
-                if not inp.has_focus and (lv.index == 0 or lv.index is None):
-                    inp.focus()
-            # Selection
-            if key == "enter":
-                if lv.index is not None:
-                    self.open_info(current[lv.index].link)
-            # Type anywhere
-            if key not in ["down", "up", "enter"]:
-                if lv.has_focus:
-                    inp.focus()
-                    if key == "backspace":
-                        inp.action_delete_left()
-                    else:
-                        await inp.on_event(event)
-        if key == "enter" and self.query_one(DataTable).has_focus:
-            self.play_selected()
+        if self.screen.id == "_default":
+            if self.query_one(TabbedContent).active == "search":
+                lv = self.query_one("#results", ListView)
+                inp = self.query_one("#input", Input)
+                # Down to list
+                if key == "down":
+                    if inp.has_focus:
+                        lv.focus()
+                # Up to Input
+                if key == "up":
+                    if not inp.has_focus and (lv.index == 0 or lv.index is None):
+                        inp.focus()
+                # Selection
+                if key == "enter":
+                    if lv.index is not None:
+                        self.open_info()
+                # Type anywhere
+                if key not in ["down", "up", "enter"]:
+                    if lv.has_focus:
+                        inp.focus()
+                        if key == "backspace":
+                            inp.action_delete_left()
+                        else:
+                            await inp.on_event(event)
+            if key == "enter" and self.query_one(DataTable).has_focus:
+                self.play_selected()
 
     @work(exclusive=True)
     async def play_selected(self):
-        dt = self.query_one(DataTable)
-        ep: Episode = self.current_info.episodes[dt.cursor_row]
-        await dt.set_loading(True)
-        c = current[self.app.query_one("#results", ListView).index]
-        hls = await get_veo_hls(f"https://186.2.175.5/serie/stream/{c.link}/staffel-{ep.staffel}/episode-{ep.number}")
-        self.open_with_mpv(url=hls, title=f"{c.name} - {ep.title_de}", fullscreen=True)
-        await dt.set_loading(False)
+        if which("mpv"):
+            dt = self.query_one(DataTable)
+            ep: Episode = self.current_info.episodes[dt.cursor_row]
+            await dt.set_loading(True)
+            index = self.app.query_one("#results", ListView).index
+            c = self.current[index]
+            hls = await get_veo_hls(c, ep.staffel, ep.number)
+            # TODO: Check if hls link is 404
+            self.play(
+                url=hls,
+                series_search_result=c,
+                fullscreen=True,
+                episodes=self.current_info.episodes,
+                index=dt.cursor_row
+            )
+            await dt.set_loading(False)
+        else:
+            self.notify(
+                "You wont be able to play videos directly.\n"
+                "Please install MPV!",
+                title="MPV not found",
+                severity="error",
+            )
 
     @work(exclusive=True)
-    async def open_info(self, link: str) -> None:
+    async def open_info(self) -> None:
+        series_search_result: AniWorldSeriesSearchResult = self.current[self.app.query_one("#results", ListView).index]
         info_tab = self.query_one("#info", TabPane)
         info_tab.disabled = False
         self.query_one(TabbedContent).active = "info"
         md = self.query_one("#markdown", Markdown)
         await info_tab.set_loading(True)
-        info = await get_info(link)
+        info = await get_info(series_search_result)
         self.current_info = info
         await md.update(f"# {info.name} {info.production_year}\n{info.full_description}\n\n"
                         f"**Regisseure**: {', '.join(info.regisseure)}\\\n"
@@ -508,27 +600,54 @@ class AniTUIApp(App):
         await info_tab.set_loading(False)
 
     @work(thread=True)
-    async def open_with_mpv(self, url: str, title: str, fullscreen: bool) -> None:
-        p = Popen([
-            "mpv",
-            url,
-            "--fullscreen" if fullscreen else "",
-            f"--force-media-title={title}"
-        ])
+    async def play(
+            self,
+            url: str,
+            series_search_result: AniWorldSeriesSearchResult,
+            fullscreen: bool,
+            episodes: list[Episode],
+            index: int
+    ) -> None:
+
+        player = VideoPlayer.MPV
+        ep: Episode = episodes[index]
+        title = f"{series_search_result.name} - {ep.title_de}"
+
+        if player == VideoPlayer.MPV:
+            p = play_with_mpv(url, title, fullscreen)
+        if player == VideoPlayer.VLC:
+            path = "vlc"
+            if not which("vlc"):
+                if which(r"C:\Program Files\VideoLAN\VLC\vlc.exe"):
+                    path = r"C:\Program Files\VideoLAN\VLC\vlc.exe"
+
+            p = play_with_vlc(url, title, fullscreen, path)
+        if player == VideoPlayer.WMPLAYER:
+            p = play_with_wmplayer(url, title, fullscreen)
+
         while not self.app._exit:
+            sleep(0.5)
             exit_code = p.poll()
+            # EXIT CODE 3 = Finished Video
+            # EXIT CODE 0 = EXIT
             if exit_code is not None:
-                # EXIT CODE 3 = Finished
-                # EXIT CODE 0 = EXIT
-                # exit(f"{exit_code} - NEXT")
-                # Play Next
+                async def push_next_screen():
+                    async def play_next(should_next):
+                        if should_next:
+                            episode: Episode = episodes[index + 1]
+                            hls = await get_veo_hls(series_search_result, episode.staffel, episode.number)
+                            self.play(hls, series_search_result, fullscreen, episodes, index + 1)
+
+                    await self.app.push_screen(Next("Playing next episode in"), callback=play_next)
+
+                self.app.call_later(push_next_screen)
                 return
 
 
 def main():
     anitui_app = AniTUIApp()
-    result = anitui_app.run()
-    print(result)
+    anitui_app.run()
+    print("Good bye!")
 
 
 if __name__ == "__main__":
