@@ -2,6 +2,10 @@ from abc import abstractmethod
 from dataclasses import dataclass
 
 
+def dict_to_string(dictionary):
+    return ','.join([f"{key}: {value}" for key, value in dictionary.items()])
+
+
 @dataclass
 class Player:
     supports_headers: bool = False

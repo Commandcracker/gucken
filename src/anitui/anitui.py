@@ -34,6 +34,8 @@ from shutil import which
 from time import sleep, time
 from typing import Union
 from subprocess import Popen, PIPE
+from os import name as os_name
+import sys
 
 # pip modules
 # import mpv
@@ -49,9 +51,12 @@ from textual.widgets import (Button, Checkbox, DataTable, Footer, Header,
 from .provider.common import SearchResult, Series, Episode, Language
 from .provider.aniworld import AniWorldProvider
 from .provider.serienstream import SerienStreamProvider
+from .player.common import Player
 from .player.mpv import MPVPlayer
 from .player.vlc import VLCPlayer
 from .player.wmplayer import WMPlayer
+from .player.ffplay import FFPlayPlayer
+from .player.android import AndroidVLCPlayer, AndroidMPVPlayer, AndroidChoosePlayer
 from .hoster.common import Hoster, DirectLink
 from .hoster.veo import VOEHoster
 from .hoster.vidoza import VidozaHoster
@@ -76,9 +81,10 @@ logging.basicConfig(filename=logs_path.joinpath("anitui.log"), encoding='utf-8',
 class Next(ModalScreen):
     time = reactive(3)
 
-    def __init__(self, question):
+    def __init__(self, question: str, no_time: bool = False):
         super().__init__()
         self.question = question
+        self.no_time = no_time
 
     def compose(self) -> ComposeResult:
         with Container():
@@ -88,8 +94,9 @@ class Next(ModalScreen):
                 yield Button.success("Next", id="next")
 
     def on_mount(self) -> None:
-        self.set_interval(1, self.update_time)
-        self.query_one(Label).update(self.question + " " + str(self.time))
+        if not self.no_time:
+            self.set_interval(1, self.update_time)
+            self.query_one(Label).update(self.question + " " + str(self.time))
 
     def update_time(self) -> None:
         self.time = self.time - 1
@@ -278,26 +285,26 @@ class AniTUIApp(App):
     async def play_selected(self):
         # TODO: cache more
         # TODO: dont only check for mpv
-        if which("mpv"):
-            dt = self.query_one(DataTable)
-            # TODO: show loading
-            await dt.set_loading(True)
-            index = self.app.query_one("#results", ListView).index
-            series_search_result = self.current[index]
-            self.play(
+        #if which("mpv"):
+        dt = self.query_one(DataTable)
+        # TODO: show loading
+        await dt.set_loading(True)
+        index = self.app.query_one("#results", ListView).index
+        series_search_result = self.current[index]
+        self.play(
                 series_search_result=series_search_result,
                 fullscreen=True,
                 episodes=self.current_info.episodes,
                 index=dt.cursor_row
             )
-            await dt.set_loading(False)
-        else:
-            self.notify(
-                "You wont be able to play videos directly.\n"
-                "Please install MPV!",
-                title="MPV not found",
-                severity="error",
-            )
+        await dt.set_loading(False)
+        #else:
+        #    self.notify(
+        #        "You wont be able to play videos directly.\n"
+        #        "Please install MPV!",
+        #        title="MPV not found",
+        #        severity="error",
+        #    )
 
     @work(exclusive=True)
     async def open_info(self) -> None:
@@ -348,6 +355,36 @@ class AniTUIApp(App):
         table.focus(scroll_visible=False)
         await info_tab.set_loading(False)
 
+    def detect_player(self) -> Union[Player, None]:
+        # Android
+        if hasattr(sys, 'getandroidapilevel'):
+            # TODO: detect right
+            return AndroidMPVPlayer()
+            #return AndroidVLCPlayer()
+            #return AndroidChoosePlayer()
+            #return None
+
+        # All
+        if which("mpv"):
+            return MPVPlayer()
+        if which("vlc"):
+            return VLCPlayer()
+
+        # Windows
+        if os_name == "nt":
+            if which(r"C:\Program Files\VideoLAN\VLC\vlc.exe"):
+                # r"C:\Program Files\VideoLAN\VLC\vlc.exe"
+                return VLCPlayer()
+
+        if which("ffplay"):
+            return FFPlayPlayer()
+
+        # Windows
+        if os_name == "nt":
+            return WMPlayer()
+
+        return None
+
     @work(thread=True)
     async def play(
             self,
@@ -363,51 +400,77 @@ class AniTUIApp(App):
         sorted_hoster = self.sort_favorite_hoster(processed_hoster.get(lang))
         direct_link = await self.get_working_direct_link(sorted_hoster)
 
-        player = MPVPlayer
-        # TODO: ani_skip plugin as arg
+        player = self.detect_player()
+
+        if player is None:
+            raise RuntimeError()
+
+        # TODO: ani_skip, syncplay, fullscreen as arg
+        # TODO: pass ani_skip as script
         ani_skip = True
+        syncplay = True
 
         title = f"{series_search_result.name} - {episode.title}"
 
-        args = None
-
-        if player is MPVPlayer:
-            additional_arguments = None
-            if ani_skip:
-                timings = await get_timings_from_search(series_search_result.name, index + 1)
-                if timings:
-                    additional_arguments = [
-                        timings_to_mpv_options(timings),
-                        generate_chapters_file_and_get_mpv_option(timings)
-                    ]
-            # --start=00:56
-            args = MPVPlayer().play(
-                direct_link.url,
-                title,
-                fullscreen,
-                direct_link.headers,
-                additional_arguments=additional_arguments
-            )
-        if player is VLCPlayer:
-            path = "vlc"
+        path = None
+        if isinstance(player, VLCPlayer):
             if not which("vlc"):
                 if which(r"C:\Program Files\VideoLAN\VLC\vlc.exe"):
                     path = r"C:\Program Files\VideoLAN\VLC\vlc.exe"
 
-            args = VLCPlayer().play(direct_link.url, title, fullscreen, direct_link.headers, path)
-        if player is WMPlayer:
-            args = WMPlayer().play(direct_link.url, title, fullscreen, direct_link.headers)
-        if args is None:
-            raise RuntimeError()
+        args = player.play(direct_link.url, title, fullscreen, direct_link.headers, path)
 
-        process = Popen(args, stderr=PIPE)
+        if isinstance(player, MPVPlayer):
+            if ani_skip:
+                timings = await get_timings_from_search(series_search_result.name, index + 1)
+                if timings:
+                    # --start=00:56
+                    args += [
+                        timings_to_mpv_options(timings),
+                        generate_chapters_file_and_get_mpv_option(timings)
+                    ]
+
+        if syncplay:
+            syncplay_path = None
+            if which("syncplay"):
+                syncplay_path = "syncplay"
+            if not syncplay_path:
+                if os_name == "nt":
+                    if which(r"C:\Program Files (x86)\Syncplay\Syncplay.exe"):
+                        syncplay_path = r"C:\Program Files (x86)\Syncplay\Syncplay.exe"
+            if not syncplay_path:
+                self.notify(
+                    "Syncplay not found",
+                    title="Syncplay not found",
+                    severity="error",
+                )
+            else:
+                if isinstance(player, MPVPlayer) or isinstance(player, VLCPlayer):
+                    # TODO: dont detect mpv.com
+                    player_path = which(args[0])
+                    url = args[1]
+                    args.pop(0)
+                    args.pop(0)
+                    args = [syncplay_path, "--player-path", player_path, url, "--"] + args
+                else:
+                    self.notify(
+                        "Your player is not supported by Syncplay",
+                        title="Player not supported",
+                        severity="warning",
+                    )
+
+        logging.info("Running: %s", args)
+        process = Popen(
+            args,
+            stderr=PIPE
+        )
         while not self.app._exit:
             sleep(0.1)
 
             resume_time = None
 
             # only if mpv
-            while True:
+            while not self.app._exit:
                 output = process.stderr.readline()
                 if process.poll() is not None:
                     break
@@ -435,7 +498,7 @@ class AniTUIApp(App):
                                 index + 1,
                             )
 
-                    await self.app.push_screen(Next("Playing next episode in"), callback=play_next)
+                    await self.app.push_screen(Next("Playing next episode in", no_time=hasattr(sys, 'getandroidapilevel')), callback=play_next)
 
                 self.app.call_later(push_next_screen)
                 return

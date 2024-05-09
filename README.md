@@ -17,7 +17,7 @@ and watch
 
 ## Installation
 
-soon tm
+soon tm, you can do it
 
 ## Features
 
@@ -25,10 +25,18 @@ soon tm
   - [x] Descriptions
 - [x] Watching
   - [x] Automatically start next episode
+  - [ ] Discord Presence
   - [MPV] only
     - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support (very WIP)
+    - [x] [Syncplay](https://github.com/Syncplay/syncplay) support
     - [ ] Remember watch time (WIP)
+    - [ ] Remember completed Episodes (and series)
+  - [ ] Tracker support
+    - [ ] [MyAnimeList](https://myanimelist.net/)
+    - [ ] [AniList](https://anilist.co/)
+    - [ ] [AniWorld.to] & [SerienStream.to]
 - [ ] Downloading
+  - [ ] Watch from download
 
 ## Provider
 
@@ -41,7 +49,7 @@ List of supported Anime sites
     - [x] Streamtape
     - [x] VEO
     - [x] Vidoza
-    - [x] Doodstream (only for mpv, because of http header)
+    - [x] Doodstream
 - [ ] [bs.to](https://bs.to/)
 - [ ] [www3.streamcloud.info](https://www3.streamcloud.info/)
 - [ ] [www.crunchyroll.com](https://www.crunchyroll.com)
@@ -53,15 +61,22 @@ List of supported video players
 
 - [x] [MPV] (most features, recommended)
 - [x] [VLC]
-- [ ] ffplay
+- [x] [ffplay](https://www.ffmpeg.org/ffplay.html)
 - Windows
+  - [ ] [mpv.net](https://github.com/mpvnet-player/mpv.net)
   - [x] wmplayer.exe (fallback on Windows)
 - Android
-  - [ ] [mpv-android](https://github.com/mpv-android/mpv-android)
-  - [ ] [VLC]
-  - [ ] Choose
+  - [x] [mpv-android](https://github.com/mpv-android/mpv-android)
+  - [x] [VLC]
+  - [x] Choose
 - Linux (Flatpack)
-  -  [ ] [MPV](https://flathub.org/apps/io.mpv.Mpv)
+  - [ ] [MPV](https://flathub.org/apps/io.mpv.Mpv)
+  - [ ] [VLC](https://flathub.org/apps/org.videolan.VLC)
+  - [ ] [Celluloid](https://flathub.org/apps/io.github.celluloid_player.Celluloid)
+- Linux
+  - [ ] [Celluloid](https://celluloid-player.github.io/)
+- MacOS
+  - [ ] [IINA](https://iina.io/)
 
 ## Todo
 
@@ -93,11 +108,6 @@ List of supported video players
   Cloudflare captcha and JS challange can be solved by using something like
   selenium or playwright
   ```
-- [ ] Discord Presence
-- [ ] Tracker support
-  - [ ] [MyAnimeList](https://myanimelist.net/)
-  - [ ] [AniList](https://anilist.co/)
-  - [ ] [AniWorld.to] & [SerienStream.to]
 - [ ] [MPV] screen selection
 - [ ] Settings (Save)
 - [ ] [MPV] custom args
@@ -119,7 +129,6 @@ List of supported video players
 - [ ] Logging and Crash reports
 - [ ] Pre-fetching
 - [ ] improve [ani-skip](https://github.com/synacktraa/ani-skip) support
-- [ ] Support [Syncplay](https://github.com/Syncplay/syncplay)
 - [ ] Use something like opencv to time match a sub from aniworld with a high quality video form another site.
 
 [Anime4k]: https://github.com/bloc97/Anime4K

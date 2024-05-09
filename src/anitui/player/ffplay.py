@@ -1,7 +1,7 @@
 from .common import Player, dict_to_string
 
 
-class MPVPlayer(Player):
+class FFPlayPlayer(Player):
     supports_headers = True
 
     def play(
@@ -13,13 +13,12 @@ class MPVPlayer(Player):
             override_executable: str = None
     ) -> list[str]:
         args = [
-            override_executable or "mpv",
+            override_executable or "ffplay",
             url
         ]
-        if full_screen:
-            args.append("--fullscreen")
         if title:
-            args.append(f"--force-media-title={title}")
+            args.append("-window_title")
+            args.append(title)
         if headers:
-            args.append(f"--http-header-fields={dict_to_string(headers)}")
+            args.append(f"-headers={dict_to_string(headers)}")
         return args

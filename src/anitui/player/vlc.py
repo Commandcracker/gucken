@@ -10,11 +10,19 @@ class VLCPlayer(Player):
             headers: dict[str, str] = None,
             override_executable: str = None
     ) -> list[str]:
-        return [
+        args = [
             override_executable or "vlc",
             url,
             "--no-video-title-show",
-            "--fullscreen" if full_screen else "",
             "--play-and-exit",
-            f"--input-title-format={title}"
         ]
+        if full_screen:
+            args.append("--fullscreen")
+        if title:
+            args.append(f"--input-title-format={title}")
+        if headers:
+            if headers.get("Referer"):
+                args.append(f"--http-referrer={headers.get('Referer')}")
+            if headers.get("User-Agent"):
+                args.append(f"--http-user-agent={headers.get('User-Agent')}")
+        return args

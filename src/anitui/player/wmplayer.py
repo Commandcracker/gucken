@@ -10,8 +10,10 @@ class WMPlayer(Player):
             headers: dict[str, str] = None,
             override_executable: str = None
     ) -> list[str]:
-        return [
+        args = [
             override_executable or r"C:\Program Files (x86)\Windows Media Player\wmplayer.exe",
-            url,
-            "/fullscreen" if full_screen else "",
+            url
         ]
+        if full_screen:
+            args.append("/fullscreen")
+        return args
