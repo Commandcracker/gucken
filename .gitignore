@@ -1,2 +1,8 @@
 venv
 .idea
+*.log
+*.LNK
+local_watchtime.json
+__pycache__
+*.egg-info
+dist

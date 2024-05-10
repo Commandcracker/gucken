@@ -1,0 +1,51 @@
+Next {
+    align: center middle;
+}
+
+Next > Container {
+    width: auto;
+    height: auto;
+    align: center middle;
+    padding: 1 2;
+    background: $panel;
+}
+
+Next > Container > Label {
+    width: 100%;
+    content-align-horizontal: center;
+}
+
+Next > Container > Horizontal {
+    height: auto;
+    width: auto;
+}
+
+Next > Container > Horizontal > Button {
+    margin: 1 2;
+}
+
+#hosters {
+    height: auto;
+}
+
+#input {
+    margin: 1 0;
+}
+
+#markdown {
+    margin: 0 0;
+}
+
+#season_list {
+    margin: 1 0;
+    margin-bottom: 0;
+}
+
+TabbedContent #--content-tab-setting {
+    dock: right;
+    margin-right: 1;
+}
+
+#setting > RadioButton {
+    margin-bottom: 1;
+}
