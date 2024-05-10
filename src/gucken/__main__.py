@@ -1,4 +1,4 @@
-from .anitui import main
+from .gucken import main
 
 if __name__ == "__main__":
     main()

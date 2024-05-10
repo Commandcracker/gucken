@@ -45,3 +45,7 @@ TabbedContent #--content-tab-setting {
     dock: right;
     margin-right: 1;
 }
+
+#setting > RadioButton {
+    margin-bottom: 1;
+}

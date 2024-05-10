@@ -46,7 +46,8 @@ from textual.app import App, ComposeResult
 from textual.containers import Center, Container, Horizontal, ScrollableContainer
 from textual.widgets import (Button, Checkbox, DataTable, Footer, Header,
                              Input, Label, ListItem, ListView, Markdown,
-                             TabbedContent, TabPane)
+                             TabbedContent, TabPane, Static, Switch, RadioButton)
+from textual.widgets._toggle_button import ToggleButton
 
 from .provider.common import SearchResult, Series, Episode, Language
 from .provider.aniworld import AniWorldProvider
@@ -68,14 +69,12 @@ from .aniskip import (
     generate_chapters_file_and_get_mpv_option
 )
 
-__version__ = "1.0.0"
-
 import logging
 from pathlib import Path
 
 logs_path = Path(__file__).parent.parent.parent.joinpath("logs")
 logs_path.mkdir(exist_ok=True, parents=True)
-logging.basicConfig(filename=logs_path.joinpath("anitui.log"), encoding='utf-8', level=logging.INFO)
+logging.basicConfig(filename=logs_path.joinpath("gucken.log"), encoding='utf-8', level=logging.INFO)
 
 
 class Next(ModalScreen):
@@ -138,10 +137,10 @@ class ClickableDataTable(DataTable):
         self.last_click[row_index] = time()
 
 
-class AniTUIApp(App):
-    TITLE = "AniTUI"
+class GuckenApp(App):
+    TITLE = "Gucken TUI"
     # TODO: color theme https://textual.textualize.io/guide/design/#designing-with-colors
-    CSS_PATH = "anitui.tcss"
+    CSS_PATH = "gucken.tcss"
 
     def __init__(self):
         super().__init__()
@@ -161,8 +160,10 @@ class AniTUIApp(App):
                 with ScrollableContainer(id="res_con"):
                     yield Markdown(id="markdown")
                     yield ClickableDataTable(id="season_list")
-            # with TabPane("Settings", id="setting"):  # Settings "⚙"
-            #    yield Label("WIP")
+            with TabPane("Settings", id="setting"):  # Settings "⚙"
+                yield RadioButton("Fullscreen", id="fullscreen", value=True)
+                yield RadioButton("Syncplay", id="syncplay", value=False)
+                yield RadioButton("ani-skip", id="ani_skip", value=True)
             # with RadioSet():
             #    yield RadioButton("VOE", id="voe", value=True)
             #    yield RadioButton("Doodstream", id="doodstream")
@@ -266,8 +267,8 @@ class AniTUIApp(App):
 
     def sort_favorite_hoster(self, hoster_list: list[Hoster]) -> list[Hoster]:
         return sorted(hoster_list, key=lambda x: (
-            not isinstance(x, VOEHoster),
             not isinstance(x, StreamtapeHoster),
+            not isinstance(x, VOEHoster),
             not isinstance(x, VidozaHoster),
             not isinstance(x, DoodstreamHoster),
         ))
@@ -293,7 +294,6 @@ class AniTUIApp(App):
         series_search_result = self.current[index]
         self.play(
                 series_search_result=series_search_result,
-                fullscreen=True,
                 episodes=self.current_info.episodes,
                 index=dt.cursor_row
             )
@@ -389,7 +389,6 @@ class AniTUIApp(App):
     async def play(
             self,
             series_search_result: SearchResult,
-            fullscreen: bool,
             episodes: list[Episode],
             index: int
     ) -> None:
@@ -407,8 +406,9 @@ class AniTUIApp(App):
 
         # TODO: ani_skip, syncplay, fullscreen as arg
         # TODO: pass ani_skip as script
-        ani_skip = True
-        syncplay = True
+        ani_skip = self.query_one("#ani_skip", RadioButton).value
+        syncplay = self.query_one("#syncplay", RadioButton).value
+        fullscreen = self.query_one("#fullscreen", RadioButton).value
 
         title = f"{series_search_result.name} - {episode.title}"
 
@@ -493,7 +493,6 @@ class AniTUIApp(App):
                         if should_next:
                             self.play(
                                 series_search_result,
-                                fullscreen,
                                 episodes,
                                 index + 1,
                             )
@@ -514,8 +513,8 @@ exit_quotes = [
 
 
 def main():
-    anitui_app = AniTUIApp()
-    anitui_app.run()
+    gucken_app = GuckenApp()
+    gucken_app.run()
     print(choice(exit_quotes))
 
 

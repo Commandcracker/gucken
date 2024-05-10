@@ -1,2 +1,2 @@
 cd src
-py -m anitui
+py -m gucken

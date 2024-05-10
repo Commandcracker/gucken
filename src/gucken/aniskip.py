@@ -90,7 +90,7 @@ def get_chapters_file_content(timings=dict[str, float]) -> str:
 
 
 def generate_chapters_file(timings=dict[str, float]) -> TemporaryFile:
-    temp_file = TemporaryFile(mode='w', prefix="anitui-", delete=False)
+    temp_file = TemporaryFile(mode='w', prefix="gucken-", delete=False)
     temp_file.write(get_chapters_file_content(timings))
     return temp_file
 

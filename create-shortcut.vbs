@@ -3,10 +3,10 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 currentPath = fso.GetParentFolderName(WScript.ScriptFullName)
 
 Set oWS = WScript.CreateObject("WScript.Shell")
-sLinkFile = "AniTUI.LNK"
+sLinkFile = "Gucken.LNK"
 Set oLink = oWS.CreateShortcut(sLinkFile)
     oLink.TargetPath = "C:\Windows\py.exe"
-    oLink.Arguments = "-m anitui"
+    oLink.Arguments = "-m gucken"
  '  oLink.Description = "MyProgram"   
  '  oLink.HotKey = "ALT+CTRL+F"
  '  oLink.IconLocation = "C:\Program Files\MyApp\MyProgram.EXE, 2"

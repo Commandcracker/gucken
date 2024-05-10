@@ -1,12 +1,8 @@
-# AniTUI
-
-Anime Terminal User Interface
-
----
+# Gucken
 
 ## Description
 
-AniTUI is a Terminal User Interface which allows you to browse and watch your favorite anime's with style. 
+Gucken is a Terminal User Interface which allows you to browse and watch your favorite anime's with style. 
 
 ## Usage
 
@@ -17,7 +13,41 @@ and watch
 
 ## Installation
 
-soon tm, you can do it
+### Windows
+
+Install python and then
+
+```
+pip install gucken
+```
+
+### Linux
+
+Install python and then
+
+```
+pip install gucken
+```
+
+### Android
+
+Install [Termux](https://termux.dev/en/) and run:
+
+```
+pkg update -y
+pkg upgrade -y
+pkg install python ffmpeg -y
+pip install gucken
+gucken
+```
+
+#### Optional
+
+Setup storage for downloads.
+
+```
+termux-setup-storage
+```
 
 ## Features
 
