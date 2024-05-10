@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from httpx import HTTPError, AsyncClient
+
+from httpx import AsyncClient, HTTPError
 
 
 @dataclass

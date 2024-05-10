@@ -10,8 +10,9 @@ dependencies = [
   "beautifulsoup4>=4.12.3",
   "httpx>=0.27.0",
   "pypresence>=4.3.0",
-  #"yt-dlp>=2024.4.9"
-  #"httpx[socks]"
+  #"yt-dlp>=2024.4.9",
+  #"mpv>=1.0.6",
+  #"httpx[socks]",
 ]
 keywords = [
   "gucken",
@@ -23,28 +24,22 @@ keywords = [
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Environment :: Console",
-
   "Intended Audience :: End Users/Desktop",
   "Intended Audience :: Developers",
-
   "License :: OSI Approved :: MIT License",
-
   "Natural Language :: English",
   "Natural Language :: German",
-
   "Programming Language :: Lua",
   "Programming Language :: Python",
-
   "Topic :: Games/Entertainment",
   "Topic :: Multimedia",
   "Topic :: Multimedia :: Sound/Audio",
   "Topic :: Multimedia :: Video",
-
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
   "Operating System :: Android",
-  #"Operating System :: MacOS"
-  #"Operating System :: iOS"
+  #"Operating System :: MacOS",
+  #"Operating System :: iOS",
 ]
 
 [project.urls]

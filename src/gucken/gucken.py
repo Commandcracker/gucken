@@ -1,76 +1,43 @@
-# !/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-MIT License
-
-Copyright (c) 2024 Commandcracker
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-"""
-
-from textual.reactive import reactive
-from textual.screen import ModalScreen
-
-# built-in modules
+import logging
+import sys
 from asyncio import gather
+from os import name as os_name, getenv
+from os.path import join
+from pathlib import Path
+from random import choice
 from shutil import which
+from subprocess import PIPE, Popen
 from time import sleep, time
 from typing import Union
-from subprocess import Popen, PIPE
-from os import name as os_name
-import sys
 
-# pip modules
-# import mpv
-# import ytdl
 from textual import events, on, work
-from random import choice
 from textual.app import App, ComposeResult
-from textual.containers import Center, Container, Horizontal, ScrollableContainer
+from textual.containers import (Center, Container, Horizontal,
+                                ScrollableContainer)
+from textual.reactive import reactive
+from textual.screen import ModalScreen
 from textual.widgets import (Button, Checkbox, DataTable, Footer, Header,
                              Input, Label, ListItem, ListView, Markdown,
-                             TabbedContent, TabPane, Static, Switch, RadioButton)
-from textual.widgets._toggle_button import ToggleButton
+                             RadioButton, TabbedContent, TabPane)
 
-from .provider.common import SearchResult, Series, Episode, Language
-from .provider.aniworld import AniWorldProvider
-from .provider.serienstream import SerienStreamProvider
-from .player.common import Player
-from .player.mpv import MPVPlayer
-from .player.vlc import VLCPlayer
-from .player.wmplayer import WMPlayer
-from .player.ffplay import FFPlayPlayer
-from .player.android import AndroidVLCPlayer, AndroidMPVPlayer, AndroidChoosePlayer
-from .hoster.common import Hoster, DirectLink
+from .aniskip import (generate_chapters_file_and_get_mpv_option,
+                      get_timings_from_search, timings_to_mpv_options)
+from .hoster.common import DirectLink, Hoster
+from .hoster.doodstream import DoodstreamHoster
+from .hoster.streamtape import StreamtapeHoster
 from .hoster.veo import VOEHoster
 from .hoster.vidoza import VidozaHoster
-from .hoster.streamtape import StreamtapeHoster
-from .hoster.doodstream import DoodstreamHoster
-from .aniskip import (
-    get_timings_from_search,
-    timings_to_mpv_options,
-    generate_chapters_file_and_get_mpv_option
-)
-
-import logging
-from pathlib import Path
+from .player.android import (AndroidChoosePlayer, AndroidMPVPlayer,
+                             AndroidVLCPlayer)
+from .player.common import Player
+from .player.ffplay import FFPlayPlayer
+from .player.mpv import MPVPlayer, MPV_NETPlayer, CelluloidPlayer
+from .player.vlc import VLCPlayer
+from .player.wmplayer import WMPlayer
+from .player.flatpak import FlatpakMPVPlayer, FlatpakVLCPlayer, FlatpakCelluloidPlayer
+from .provider.aniworld import AniWorldProvider
+from .provider.common import Episode, Language, SearchResult, Series
+from .provider.serienstream import SerienStreamProvider
 
 logs_path = Path(__file__).parent.parent.parent.joinpath("logs")
 logs_path.mkdir(exist_ok=True, parents=True)
@@ -180,11 +147,11 @@ class GuckenApp(App):
         table.cursor_type = "row"
         # TODO: make them scale
         table.add_columns("FT", "S", "F", "Name", "Title", "Hoster", "Sprache")
-        if not which("mpv"):
+        if self.detect_player() is None:
             self.notify(
-                "You wont be able to play videos directly.\n"
-                "Please install MPV!",
-                title="MPV not found",
+                "You wont be able to play videos.\n"
+                "Without an supported video player!",
+                title="No player found",
                 severity="warning",
             )
 
@@ -200,34 +167,33 @@ class GuckenApp(App):
     # TODO: https://textual.textualize.io/guide/workers/#thread-workers
     @work(exclusive=True)
     async def lookup_anime(self, keyword: str) -> None:
-
-        owos = []
+        search_providers = []
         if self.query_one("#aniworld_to", Checkbox).value:
-            owos.append(AniWorldProvider.search(keyword))
+            search_providers.append(AniWorldProvider.search(keyword))
 
         if self.query_one("#serienstream_to", Checkbox).value:
-            owos.append(SerienStreamProvider.search(keyword))
+            search_providers.append(SerienStreamProvider.search(keyword))
 
-        lv = self.query_one("#results", ListView)
-        await lv.clear()
-        await lv.set_loading(True)
-        results = await gather(*owos)
-        f_results = []
+        results_list_view = self.query_one("#results", ListView)
+        await results_list_view.clear()
+        await results_list_view.set_loading(True)
+        results = await gather(*search_providers)
+        final_results = []
         for l in results:
             if l is not None:
                 for e in l:
-                    f_results.append(e)
+                    final_results.append(e)
 
-        # TODO: stor f_results by fuzzy sort keyword
-        if len(f_results) > 0:
-            self.current = f_results
-            for series in f_results:
-                await lv.append(ClickableListItem(Markdown(
+        # TODO: Sort final_results with fuzzy-sort
+        if len(final_results) > 0:
+            self.current = final_results
+            for series in final_results:
+                await results_list_view.append(ClickableListItem(Markdown(
                     f"##### **{series.name}** {series.production_year}\n{series.description}"
                 )))
-        await lv.set_loading(False)
-        if len(f_results) > 0:
-            lv.index = 0
+        await results_list_view.set_loading(False)
+        if len(final_results) > 0:
+            results_list_view.index = 0
 
     async def on_key(self, event: events.Key) -> None:
         key = event.key
@@ -284,27 +250,17 @@ class GuckenApp(App):
 
     @work(exclusive=True)
     async def play_selected(self):
-        # TODO: cache more
-        # TODO: dont only check for mpv
-        #if which("mpv"):
         dt = self.query_one(DataTable)
         # TODO: show loading
         await dt.set_loading(True)
         index = self.app.query_one("#results", ListView).index
         series_search_result = self.current[index]
         self.play(
-                series_search_result=series_search_result,
-                episodes=self.current_info.episodes,
-                index=dt.cursor_row
-            )
+            series_search_result=series_search_result,
+            episodes=self.current_info.episodes,
+            index=dt.cursor_row
+        )
         await dt.set_loading(False)
-        #else:
-        #    self.notify(
-        #        "You wont be able to play videos directly.\n"
-        #        "Please install MPV!",
-        #        title="MPV not found",
-        #        severity="error",
-        #    )
 
     @work(exclusive=True)
     async def open_info(self) -> None:
@@ -356,7 +312,6 @@ class GuckenApp(App):
         await info_tab.set_loading(False)
 
     def detect_player(self) -> Union[Player, None]:
-        # Android
         if hasattr(sys, 'getandroidapilevel'):
             # TODO: detect right
             return AndroidMPVPlayer()
@@ -364,22 +319,48 @@ class GuckenApp(App):
             #return AndroidChoosePlayer()
             #return None
 
-        # All
-        if which("mpv"):
+        if os_name == "nt":
+            if which("mpv.exe"):
+                return MPVPlayer("mpv.exe")
+        elif which("mpv"):
             return MPVPlayer()
+
+        if os_name == "nt":
+            if which("mpvnet.exe"):
+                return MPV_NETPlayer()
+            if getenv("LOCALAPPDATA"):
+                mpvnet = join(getenv("LOCALAPPDATA"), "Programs", "mpv.net", "mpvnet.exe")
+                if which(mpvnet):
+                    return MPV_NETPlayer(mpvnet)
+
+        if os_name == "posix":
+            if which("celluloid"):
+                return CelluloidPlayer()
+
         if which("vlc"):
             return VLCPlayer()
 
-        # Windows
+        if os_name == "posix":
+            # TODO: fix this will slow down
+            if which("flatpak"):
+                p = Popen(["flatpak", "info", "io.mpv.Mpv"])
+                if p.wait() != 0:
+                    return FlatpakMPVPlayer()
+                p = Popen(["flatpak", "info", "io.github.celluloid_player.Celluloid"])
+                if p.wait() != 0:
+                    return FlatpakCelluloidPlayer()
+                p = Popen(["flatpak", "info", "org.videolan.VLC"])
+                if p.wait() != 0:
+                    return FlatpakVLCPlayer()
+
         if os_name == "nt":
-            if which(r"C:\Program Files\VideoLAN\VLC\vlc.exe"):
-                # r"C:\Program Files\VideoLAN\VLC\vlc.exe"
-                return VLCPlayer()
+            vlc = r"C:\Program Files\VideoLAN\VLC\vlc.exe"
+            if which(vlc):
+                return VLCPlayer(vlc)
 
         if which("ffplay"):
             return FFPlayPlayer()
 
-        # Windows
         if os_name == "nt":
             return WMPlayer()
 
@@ -400,26 +381,27 @@ class GuckenApp(App):
         direct_link = await self.get_working_direct_link(sorted_hoster)
 
         player = self.detect_player()
+        # TODO: check for header support
 
         if player is None:
-            raise RuntimeError()
+            self.notify(
+                "You wont be able to play videos.\n"
+                "Without an supported video player!",
+                title="No player found",
+                severity="error",
+            )
+            return
 
-        # TODO: ani_skip, syncplay, fullscreen as arg
+        # TODO: ani_skip, syncplay, fullscreen as cli arg
         # TODO: pass ani_skip as script
         ani_skip = self.query_one("#ani_skip", RadioButton).value
         syncplay = self.query_one("#syncplay", RadioButton).value
         fullscreen = self.query_one("#fullscreen", RadioButton).value
 
         title = f"{series_search_result.name} - {episode.title}"
+        args = player.play(direct_link.url, title, fullscreen, direct_link.headers)
 
-        path = None
-        if isinstance(player, VLCPlayer):
-            if not which("vlc"):
-                if which(r"C:\Program Files\VideoLAN\VLC\vlc.exe"):
-                    path = r"C:\Program Files\VideoLAN\VLC\vlc.exe"
-
-        args = player.play(direct_link.url, title, fullscreen, direct_link.headers, path)
-
+        # TODO: cache more
         if isinstance(player, MPVPlayer):
             if ani_skip:
                 timings = await get_timings_from_search(series_search_result.name, index + 1)
@@ -446,7 +428,6 @@ class GuckenApp(App):
                 )
             else:
                 if isinstance(player, MPVPlayer) or isinstance(player, VLCPlayer):
-                    # TODO: dont detect mpv.com
                     player_path = which(args[0])
                     url = args[1]
                     args.pop(0)
@@ -497,7 +478,8 @@ class GuckenApp(App):
                                 index + 1,
                             )
 
-                    await self.app.push_screen(Next("Playing next episode in", no_time=hasattr(sys, 'getandroidapilevel')), callback=play_next)
+                    await self.app.push_screen(
+                        Next("Playing next episode in", no_time=hasattr(sys, 'getandroidapilevel')), callback=play_next)
 
                 self.app.call_later(push_next_screen)
                 return

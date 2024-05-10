@@ -1,12 +1,12 @@
-from dataclasses import dataclass
+from random import choices
+from re import compile as re_compile
+from string import ascii_letters, digits
+from time import time
+from urllib.parse import urlparse
 
 from httpx import AsyncClient
-from time import time
-from random import choices
-from string import ascii_letters, digits
-from re import compile as re_compile
-from urllib.parse import urlparse
-from .common import Hoster, DirectLink
+
+from .common import DirectLink, Hoster
 
 EXTRACT_DOODSTREAM_HLS_PATTERN = re_compile(r"/pass_md5/[\w-]+/[\w-]+")
 

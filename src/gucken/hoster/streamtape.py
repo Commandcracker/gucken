@@ -1,6 +1,8 @@
 from re import compile as re_compile
+
 from httpx import AsyncClient
-from .common import Hoster, DirectLink
+
+from .common import DirectLink, Hoster
 
 STREAMTAPE_PATTERN = re_compile(r'botlink(.*?)innerHTML(.*?)\);')
 STREAMTAPE_PATTERN_SUBSTRING = re_compile(r'substring\(\d+')

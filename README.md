@@ -15,18 +15,20 @@ and watch
 
 ### Windows
 
-Install python and then
+Install [Python] and if you are **on Windows 10** [Windows Terminal] for a better experience.
 
 ```
 pip install gucken
+gucken
 ```
 
 ### Linux
 
-Install python and then
+Install [Python] and then
 
 ```
 pip install gucken
+gucken
 ```
 
 ### Android
@@ -92,19 +94,20 @@ List of supported video players
 - [x] [MPV] (most features, recommended)
 - [x] [VLC]
 - [x] [ffplay](https://www.ffmpeg.org/ffplay.html)
+- [ ] [Elisa](https://apps.kde.org/elisa/)
 - Windows
-  - [ ] [mpv.net](https://github.com/mpvnet-player/mpv.net)
+  - [x] [mpv.net](https://github.com/mpvnet-player/mpv.net)
   - [x] wmplayer.exe (fallback on Windows)
 - Android
   - [x] [mpv-android](https://github.com/mpv-android/mpv-android)
   - [x] [VLC]
   - [x] Choose
 - Linux (Flatpack)
-  - [ ] [MPV](https://flathub.org/apps/io.mpv.Mpv)
-  - [ ] [VLC](https://flathub.org/apps/org.videolan.VLC)
-  - [ ] [Celluloid](https://flathub.org/apps/io.github.celluloid_player.Celluloid)
+  - [x] [MPV](https://flathub.org/apps/io.mpv.Mpv)
+  - [x] [VLC](https://flathub.org/apps/org.videolan.VLC)
+  - [x] [Celluloid](https://flathub.org/apps/io.github.celluloid_player.Celluloid)
 - Linux
-  - [ ] [Celluloid](https://celluloid-player.github.io/)
+  - [x] [Celluloid](https://celluloid-player.github.io/)
 - MacOS
   - [ ] [IINA](https://iina.io/)
 
@@ -138,31 +141,37 @@ List of supported video players
   Cloudflare captcha and JS challange can be solved by using something like
   selenium or playwright
   ```
-- [ ] [MPV] screen selection
-- [ ] Settings (Save)
-- [ ] [MPV] custom args
-- [ ] Option for full screen
-- [ ] Theme (Dark/Light and Colors)
+- [ ] [MPV] Screen selection
+- [ ] Save settings
+- [ ] Custom player args
+- [ ] Custom player
+- [ ] Colors themes
 - [ ] Installation helper
   - [ ] [MPV]
     - [ ] [Anime4k]
-  - [ ] python
-    - [ ] requirements (venv)
   - [ ] [VLC]
-  - [ ] git (for automatic updating)
-- [ ] CLI flags
-- [ ] Testing (Windows, Linux)
-- [ ] Windows, Linux Support
+- [ ] Create shortcut Windows & Linux 
+- [ ] Update checking and updating using pip
+- [ ] CLI args
+- [ ] CI Testing (Windows, Linux)
+- [ ] CD pip
 - [ ] [Anime4k] options
-- [ ] Modular (Custom extractors, API)
+- [ ] Modular (Custom extractors/players, API)
 - [ ] Proper error handling
 - [ ] Logging and Crash reports
 - [ ] Pre-fetching
 - [ ] improve [ani-skip](https://github.com/synacktraa/ani-skip) support
 - [ ] Use something like opencv to time match a sub from aniworld with a high quality video form another site.
+- [ ] Image preview
+- [ ] Blacklist detection & bypass
+- [ ] Syncplay on Android
+- [ ] Mac support
+- [ ] IOS support
 
 [Anime4k]: https://github.com/bloc97/Anime4K
 [MPV]: https://mpv.io/
 [VLC]: https://www.videolan.org/vlc/
 [AniWorld.to]: https://aniworld.to
 [SerienStream.to]: https://186.2.175.5
+[Python]: https://www.python.org/downloads/
+[Windows Terminal]: https://apps.microsoft.com/detail/9n0dx20hk701

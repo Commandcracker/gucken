@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def dict_to_string(dictionary):
@@ -8,7 +8,8 @@ def dict_to_string(dictionary):
 
 @dataclass
 class Player:
-    supports_headers: bool = False
+    executable: str = field(default=None, init=False)
+    supports_headers: bool = field(default=False, init=True)
 
     @abstractmethod
     def play(

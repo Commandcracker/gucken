@@ -1,8 +1,10 @@
-from httpx import AsyncClient
-from .tracker.myanimelist import search
 from difflib import SequenceMatcher
-from typing import Union
 from tempfile import TemporaryFile
+from typing import Union
+
+from httpx import AsyncClient
+
+from .tracker.myanimelist import search
 
 
 # TODO: improve fuzzy

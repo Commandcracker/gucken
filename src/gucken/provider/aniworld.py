@@ -1,23 +1,16 @@
 from asyncio import gather
 from dataclasses import dataclass
-from typing import Union
 from html import unescape
+from typing import Union
 
-from httpx import AsyncClient
 from bs4 import BeautifulSoup
+from httpx import AsyncClient
 
-from .common import (
-    Provider,
-    SearchResult,
-    Series,
-    Episode,
-    Hoster,
-    Language
-)
 from ..hoster.doodstream import DoodstreamHoster
 from ..hoster.streamtape import StreamtapeHoster
 from ..hoster.veo import VOEHoster
 from ..hoster.vidoza import VidozaHoster
+from .common import Episode, Hoster, Language, Provider, SearchResult, Series
 
 
 def data_lang_key_to_lang(data_lang_key: str) -> Language:

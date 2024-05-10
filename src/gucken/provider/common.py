@@ -1,7 +1,8 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Union
+
 from ..hoster.common import Hoster
 
 

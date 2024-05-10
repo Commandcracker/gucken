@@ -2,6 +2,7 @@ from .common import Player, dict_to_string
 
 
 class FFPlayPlayer(Player):
+    executable = "ffplay"
     supports_headers = True
 
     def play(
@@ -13,7 +14,7 @@ class FFPlayPlayer(Player):
             override_executable: str = None
     ) -> list[str]:
         args = [
-            override_executable or "ffplay",
+            override_executable or self.executable,
             url
         ]
         if title:

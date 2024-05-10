@@ -1,6 +1,5 @@
 from httpx import AsyncClient
 
-
 SEARCH_QUERY = """
 query ($id: Int, $page: Int, $perPage: Int, $search: String) {
   Page (page: $page, perPage: $perPage) {
