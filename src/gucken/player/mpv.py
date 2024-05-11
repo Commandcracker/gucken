@@ -1,6 +1,8 @@
 from .common import Player, dict_to_string
+from dataclasses import dataclass
 
 
+@dataclass
 class MPVPlayer(Player):
     executable = "mpv"
     supports_headers = True
@@ -26,6 +28,7 @@ class MPVPlayer(Player):
         return args
 
 
+@dataclass
 class MPV_NETPlayer(MPVPlayer):
     executable = "mpvnet"
 
@@ -46,6 +49,7 @@ class MPV_NETPlayer(MPVPlayer):
         ) + ["--process-instance=multi"]
 
 
+@dataclass
 class CelluloidPlayer(MPVPlayer):
     executable = "celluloid"
 
@@ -64,7 +68,9 @@ class CelluloidPlayer(MPVPlayer):
             headers,
             override_executable or self.executable
         )
-        args = []
+        args = [uf_args[0], uf_args[1]]
+        uf_args.pop(0)
+        uf_args.pop(0)
         for arg in uf_args:
             args.append(f"--mpv-{arg.lstrip('-')}")
         return args + ["--new-window"]

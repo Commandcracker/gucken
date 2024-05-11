@@ -1,6 +1,9 @@
+from dataclasses import dataclass
+
 from .common import Player, dict_to_string
 
 
+@dataclass
 class FFPlayPlayer(Player):
     executable = "ffplay"
     supports_headers = True

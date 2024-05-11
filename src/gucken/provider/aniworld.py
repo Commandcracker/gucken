@@ -108,6 +108,7 @@ class AniWorldSearchResult(SearchResult):
         return f"https://{self.host}/anime/stream/{self.link}"
 
 
+@dataclass
 class AniWorldProvider(Provider):
     host = "aniworld.to"
 

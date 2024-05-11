@@ -6,7 +6,7 @@ from os.path import join
 from pathlib import Path
 from random import choice
 from shutil import which
-from subprocess import PIPE, Popen
+from subprocess import PIPE, Popen, DEVNULL
 from time import sleep, time
 from typing import Union
 
@@ -128,6 +128,7 @@ class GuckenApp(App):
                     yield Markdown(id="markdown")
                     yield ClickableDataTable(id="season_list")
             with TabPane("Settings", id="setting"):  # Settings "⚙"
+                # TODO: dont show unneeded on android
                 yield RadioButton("Fullscreen", id="fullscreen", value=True)
                 yield RadioButton("Syncplay", id="syncplay", value=False)
                 yield RadioButton("ani-skip", id="ani_skip", value=True)
@@ -142,6 +143,7 @@ class GuckenApp(App):
 
     def on_mount(self) -> None:
         self.query_one(Input).focus()
+        # TODO: FIx sometimes not disabling loading
         self.query_one("#info", TabPane).set_loading(True)
         table = self.query_one(DataTable)
         table.cursor_type = "row"
@@ -193,6 +195,7 @@ class GuckenApp(App):
                 )))
         await results_list_view.set_loading(False)
         if len(final_results) > 0:
+            # TODO: FIX this sometimes makes the program crash
             results_list_view.index = 0
 
     async def on_key(self, event: events.Key) -> None:
@@ -343,14 +346,14 @@ class GuckenApp(App):
         if os_name == "posix":
             # TODO: fix this will slow down
             if which("flatpak"):
-                p = Popen(["flatpak", "info", "io.mpv.Mpv"])
-                if p.wait() != 0:
+                p = Popen(["flatpak", "info", "io.mpv.Mpv"], stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
+                if p.wait() == 0:
                     return FlatpakMPVPlayer()
-                p = Popen(["flatpak", "info", "io.github.celluloid_player.Celluloid"])
-                if p.wait() != 0:
+                p = Popen(["flatpak", "info", "io.github.celluloid_player.Celluloid"], stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
+                if p.wait() == 0:
                     return FlatpakCelluloidPlayer()
-                p = Popen(["flatpak", "info", "org.videolan.VLC"])
-                if p.wait() != 0:
+                p = Popen(["flatpak", "info", "org.videolan.VLC"], stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
+                if p.wait() == 0:
                     return FlatpakVLCPlayer()
 
         if os_name == "nt":
@@ -413,6 +416,8 @@ class GuckenApp(App):
                     ]
 
         if syncplay:
+            # TODO: make work with flatpak
+            # TODO: make work with android
             syncplay_path = None
             if which("syncplay"):
                 syncplay_path = "syncplay"
@@ -443,7 +448,9 @@ class GuckenApp(App):
         logging.info("Running: %s", args)
         process = Popen(
             args,
-            stderr=PIPE
+            stderr=PIPE,
+            stdout=DEVNULL,
+            stdin=DEVNULL
         )
         while not self.app._exit:
             sleep(0.1)

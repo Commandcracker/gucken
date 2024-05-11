@@ -1,7 +1,10 @@
+from dataclasses import dataclass
+
 from .mpv import MPVPlayer, CelluloidPlayer
 from .vlc import VLCPlayer
 
 
+@dataclass
 class FlatpakMPVPlayer(MPVPlayer):
     executable = None
 
@@ -23,6 +26,7 @@ class FlatpakMPVPlayer(MPVPlayer):
         return ["flatpak", "run", "io.mpv.Mpv"] + uf_args
 
 
+@dataclass
 class FlatpakCelluloidPlayer(CelluloidPlayer):
     executable = None
 
@@ -44,6 +48,7 @@ class FlatpakCelluloidPlayer(CelluloidPlayer):
         return ["flatpak", "run", "io.github.celluloid_player.Celluloid"] + uf_args
 
 
+@dataclass
 class FlatpakVLCPlayer(VLCPlayer):
     executable = None
 

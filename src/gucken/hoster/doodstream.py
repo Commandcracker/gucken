@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from random import choices
 from re import compile as re_compile
 from string import ascii_letters, digits
@@ -22,6 +23,7 @@ def js_date_now() -> int:
 headers = {'Referer': 'https://d0000d.com/'}
 
 
+@dataclass
 class DoodstreamHoster(Hoster):
     requires_headers = True
 

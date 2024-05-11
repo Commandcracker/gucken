@@ -108,6 +108,7 @@ class SerienStreamSearchResult(SearchResult):
         return f"https://{self.host}/serie/stream/{self.link}"
 
 
+@dataclass
 class SerienStreamProvider(Provider):
     host = "186.2.175.5"
 

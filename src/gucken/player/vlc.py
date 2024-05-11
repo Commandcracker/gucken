@@ -1,6 +1,9 @@
+from dataclasses import dataclass
+
 from .common import Player
 
 
+@dataclass
 class VLCPlayer(Player):
     executable = "vlc"
 

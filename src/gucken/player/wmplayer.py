@@ -1,6 +1,9 @@
+from dataclasses import dataclass
+
 from .common import Player
 
 
+@dataclass
 class WMPlayer(Player):
     executable = r"C:\Program Files (x86)\Windows Media Player\wmplayer.exe"
 
