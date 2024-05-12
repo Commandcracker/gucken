@@ -241,7 +241,7 @@ class GuckenApp(App):
         self.query_one(Input).focus()
         # TODO: FIx sometimes not disabling loading
         # TODO: dont lock
-        await self.query_one("#info", TabPane).set_loading(True)
+        self.query_one("#info", TabPane).loading = True
         table = self.query_one(DataTable)
         table.cursor_type = "row"
         # TODO: make them scale
@@ -304,7 +304,7 @@ class GuckenApp(App):
 
         results_list_view = self.query_one("#results", ListView)
         await results_list_view.clear()
-        await results_list_view.set_loading(True)
+        results_list_view.loading = True
         results = await gather(*search_providers)
         final_results = []
         for l in results:
@@ -319,10 +319,14 @@ class GuckenApp(App):
                 await results_list_view.append(ClickableListItem(Markdown(
                     f"##### **{series.name}** {series.production_year}\n{series.description}"
                 )))
-        await results_list_view.set_loading(False)
+        results_list_view.loading = False
         if len(final_results) > 0:
-            # TODO: FIX this sometimes makes the program crash
-            results_list_view.index = 0
+            def select_first_index():
+                try:
+                    results_list_view.index = 0
+                except AssertionError:
+                    pass
+            self.app.call_later(select_first_index)
 
     async def on_key(self, event: events.Key) -> None:
         key = event.key
@@ -357,7 +361,7 @@ class GuckenApp(App):
     async def play_selected(self):
         dt = self.query_one(DataTable)
         # TODO: show loading
-        await dt.set_loading(True)
+        dt.loading = True
         index = self.app.query_one("#results", ListView).index
         series_search_result = self.current[index]
         self.play(
@@ -365,16 +369,16 @@ class GuckenApp(App):
             episodes=self.current_info.episodes,
             index=dt.cursor_row
         )
-        await dt.set_loading(False)
+        dt.loading = False
 
     @work(exclusive=True)
     async def open_info(self) -> None:
         series_search_result: SearchResult = self.current[self.app.query_one("#results", ListView).index]
         info_tab = self.query_one("#info", TabPane)
         info_tab.disabled = False
+        info_tab.loading = True
         self.query_one(TabbedContent).active = "info"
         md = self.query_one("#markdown", Markdown)
-        await info_tab.set_loading(True)
         series = await series_search_result.get_series()
         self.current_info = series
         await md.update(series.to_markdown())
@@ -414,7 +418,7 @@ class GuckenApp(App):
                 ", ".join(ll)
             )
         table.focus(scroll_visible=False)
-        await info_tab.set_loading(False)
+        info_tab.loading = False
 
     @work(exclusive=True, thread=True)
     async def update_check(self):
