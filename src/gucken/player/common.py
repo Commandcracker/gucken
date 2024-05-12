@@ -8,6 +8,7 @@ def dict_to_string(dictionary):
 
 @dataclass
 class Player:
+    executable: str = None
     supports_headers: bool = False
 
     @abstractmethod

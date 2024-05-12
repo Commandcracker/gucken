@@ -1,7 +1,9 @@
 from base64 import b64decode
 from re import compile as re_compile
+
 from httpx import AsyncClient
-from .common import Hoster, DirectLink
+
+from .common import DirectLink, Hoster
 
 EXTRACT_VEO_HLS_PATTERN = re_compile(r"'hls': '(.*?)'")
 

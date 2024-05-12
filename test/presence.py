@@ -1,4 +1,4 @@
-from pypresence import Presence  # The simple rich presence client in pypresence
+from pypresence import Presence, DiscordNotFound  # The simple rich presence client in pypresence
 import time
 from datetime import timedelta
 

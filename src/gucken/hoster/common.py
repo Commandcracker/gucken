@@ -1,6 +1,7 @@
 from abc import abstractmethod
-from dataclasses import dataclass, field
-from httpx import HTTPError, AsyncClient
+from dataclasses import dataclass
+
+from httpx import AsyncClient, HTTPError
 
 
 @dataclass
@@ -28,7 +29,7 @@ class DirectLink:
 @dataclass
 class Hoster:
     url: str
-    requires_headers: bool = field(default=False, init=False)
+    requires_headers: bool = False
 
     @abstractmethod
     async def get_direct_link(self) -> DirectLink:

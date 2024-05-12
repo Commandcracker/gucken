@@ -1,7 +1,12 @@
+from dataclasses import dataclass
+
 from .common import Player
 
 
+@dataclass
 class WMPlayer(Player):
+    executable = r"C:\Program Files (x86)\Windows Media Player\wmplayer.exe"
+
     def play(
             self,
             url: str,
@@ -11,7 +16,7 @@ class WMPlayer(Player):
             override_executable: str = None
     ) -> list[str]:
         args = [
-            override_executable or r"C:\Program Files (x86)\Windows Media Player\wmplayer.exe",
+            override_executable or self.executable,
             url
         ]
         if full_screen:

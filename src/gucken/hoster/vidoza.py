@@ -1,6 +1,8 @@
 from re import compile as re_compile
+
 from httpx import AsyncClient
-from .common import Hoster, DirectLink
+
+from .common import DirectLink, Hoster
 
 # TODO: improve all patterns
 EXTRACT_VIDOZA_HLS_PATTERN = re_compile(r"sourcesCode:.*?\[.*?\{.*?src:.*?[\'|\"](?P<hls>.*?)[\'|\"],")

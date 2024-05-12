@@ -1,7 +1,12 @@
+from dataclasses import dataclass
+
 from .common import Player
 
 
+@dataclass
 class VLCPlayer(Player):
+    executable = "vlc"
+
     def play(
             self,
             url: str,
@@ -11,7 +16,7 @@ class VLCPlayer(Player):
             override_executable: str = None
     ) -> list[str]:
         args = [
-            override_executable or "vlc",
+            override_executable or self.executable,
             url,
             "--no-video-title-show",
             "--play-and-exit",

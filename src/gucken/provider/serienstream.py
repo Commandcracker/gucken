@@ -1,23 +1,16 @@
 from asyncio import gather
 from dataclasses import dataclass
-from typing import Union
 from html import unescape
+from typing import Union
 
-from httpx import AsyncClient
 from bs4 import BeautifulSoup
+from httpx import AsyncClient
 
-from .common import (
-    Provider,
-    SearchResult,
-    Series,
-    Episode,
-    Hoster,
-    Language
-)
 from ..hoster.doodstream import DoodstreamHoster
 from ..hoster.streamtape import StreamtapeHoster
 from ..hoster.veo import VOEHoster
 from ..hoster.vidoza import VidozaHoster
+from .common import Episode, Hoster, Language, Provider, SearchResult, Series
 
 
 def data_lang_key_to_lang(data_lang_key: str) -> Language:
@@ -103,7 +96,6 @@ class SerienStreamSeries(Series):
 @dataclass
 class SerienStreamSearchResult(SearchResult):
     link: str = None
-    cover: str = None
     production_year: str = None
     host: str = None
 
@@ -115,6 +107,7 @@ class SerienStreamSearchResult(SearchResult):
         return f"https://{self.host}/serie/stream/{self.link}"
 
 
+@dataclass
 class SerienStreamProvider(Provider):
     host = "186.2.175.5"
 
@@ -131,7 +124,7 @@ class SerienStreamProvider(Provider):
                     name=unescape(series.get("name")),
                     link=series.get("link"),
                     description=unescape(series.get("description")),
-                    cover=series.get("cover"),
+                    cover=f"https://s.to{series.get('cover')}",
                     production_year=series.get("productionYear"),
                     host=SerienStreamProvider.host
                 ))

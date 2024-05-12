@@ -1,7 +1,8 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Union
+
 from ..hoster.common import Hoster
 
 
@@ -49,6 +50,7 @@ class Series:
 class SearchResult:
     name: str
     description: str = None
+    cover: str = None
 
     @abstractmethod
     async def get_series(self) -> Series:
