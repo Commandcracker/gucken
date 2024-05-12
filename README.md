@@ -53,15 +53,16 @@ termux-setup-storage
 
 ## Features
 
+- [x] Update checker
 - [x] Browsing
   - [x] Descriptions
 - [x] Watching
   - [x] Automatically start next episode
-  - [ ] Discord Presence
+  - [x] Discord Presence **WIP**
   - [MPV] only
-    - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support (very WIP)
+    - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support **Very WIP**
     - [x] [Syncplay](https://github.com/Syncplay/syncplay) support
-    - [ ] Remember watch time (WIP)
+    - [ ] Remember watch time **WIP**
     - [ ] Remember completed Episodes (and series)
   - [ ] Tracker support
     - [ ] [MyAnimeList](https://myanimelist.net/)
@@ -94,7 +95,7 @@ List of supported video players
 - [x] [MPV] (most features, recommended)
 - [x] [VLC]
 - [x] [ffplay](https://www.ffmpeg.org/ffplay.html)
-- [ ] [Elisa](https://apps.kde.org/elisa/)
+- [ ] Custom
 - Windows
   - [x] [mpv.net](https://github.com/mpvnet-player/mpv.net)
   - [x] wmplayer.exe (fallback on Windows)
@@ -150,8 +151,7 @@ List of supported video players
   - [ ] [MPV]
     - [ ] [Anime4k]
   - [ ] [VLC]
-- [ ] Create shortcut Windows & Linux 
-- [ ] Update checking and updating using pip
+- [ ] Create shortcut Windows & Linux
 - [ ] CLI args
 - [ ] CI Testing (Windows, Linux)
 - [ ] CD pip
@@ -167,6 +167,8 @@ List of supported video players
 - [ ] Syncplay on Android
 - [ ] Mac support
 - [ ] IOS support
+- [ ] Option to disable update checker
+- [ ] Update checker option to perform update
 
 [Anime4k]: https://github.com/bloc97/Anime4K
 [MPV]: https://mpv.io/

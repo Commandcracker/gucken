@@ -1,5 +1,5 @@
 from difflib import SequenceMatcher
-from tempfile import TemporaryFile
+from tempfile import NamedTemporaryFile
 from typing import Union
 
 from httpx import AsyncClient
@@ -91,15 +91,12 @@ def get_chapters_file_content(timings=dict[str, float]) -> str:
     )
 
 
-def generate_chapters_file(timings=dict[str, float]) -> TemporaryFile:
-    temp_file = TemporaryFile(mode='w', prefix="gucken-", delete=False)
+def generate_chapters_file(timings=dict[str, float]) -> NamedTemporaryFile:
+    temp_file = NamedTemporaryFile(mode='w', prefix="gucken-", delete=False)
     temp_file.write(get_chapters_file_content(timings))
+    temp_file.close()
     return temp_file
 
 
 def get_chapters_file_mpv_option(path: str) -> str:
     return f"--chapters-file={path}"
-
-
-def generate_chapters_file_and_get_mpv_option(timings=dict[str, float]) -> str:
-    return get_chapters_file_mpv_option(generate_chapters_file(timings).name)

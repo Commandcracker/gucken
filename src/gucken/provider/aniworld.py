@@ -96,7 +96,6 @@ class AniWorldSeries(Series):
 @dataclass
 class AniWorldSearchResult(SearchResult):
     link: str = None
-    cover: str = None
     production_year: str = None
     host: str = None
 
@@ -125,7 +124,7 @@ class AniWorldProvider(Provider):
                     name=unescape(series.get("name")),
                     link=series.get("link"),
                     description=unescape(series.get("description")),
-                    cover=series.get("cover"),
+                    cover=f"https://{AniWorldProvider.host}{series.get('cover')}",
                     production_year=series.get("productionYear"),
                     host=AniWorldProvider.host
                 ))

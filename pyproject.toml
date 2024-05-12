@@ -1,6 +1,7 @@
 [project]
 name = "gucken"
-version = "0.0.0"
+dynamic = ["version"]
+description = "Gucken is a Terminal User Interface which allows you to browse and watch your favorite anime's with style."
 authors = [{name="Commandcracker"}]
 maintainers = [{name="Commandcracker"}]
 license = {file = "LICENSE.txt"}
@@ -54,3 +55,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
 include = ["src/gucken/**", ]
+
+[tool.hatch.version]
+path = "src/gucken/__init__.py"

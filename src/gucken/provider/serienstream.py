@@ -96,7 +96,6 @@ class SerienStreamSeries(Series):
 @dataclass
 class SerienStreamSearchResult(SearchResult):
     link: str = None
-    cover: str = None
     production_year: str = None
     host: str = None
 
@@ -125,7 +124,7 @@ class SerienStreamProvider(Provider):
                     name=unescape(series.get("name")),
                     link=series.get("link"),
                     description=unescape(series.get("description")),
-                    cover=series.get("cover"),
+                    cover=f"https://s.to{series.get('cover')}",
                     production_year=series.get("productionYear"),
                     host=SerienStreamProvider.host
                 ))
