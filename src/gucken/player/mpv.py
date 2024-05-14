@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 @dataclass
 class MPVPlayer(Player):
-    executable = "mpv"
-    supports_headers = True
+    executable: str = "mpv"
+    supports_headers: bool = True
 
     def play(
             self,
@@ -29,8 +29,8 @@ class MPVPlayer(Player):
 
 
 @dataclass
-class MPV_NETPlayer(MPVPlayer):
-    executable = "mpvnet"
+class MPVNETPlayer(MPVPlayer):
+    executable: str = "mpvnet"
 
     def play(
             self,
@@ -51,7 +51,7 @@ class MPV_NETPlayer(MPVPlayer):
 
 @dataclass
 class CelluloidPlayer(MPVPlayer):
-    executable = "celluloid"
+    executable: str = "celluloid"
 
     def play(
             self,

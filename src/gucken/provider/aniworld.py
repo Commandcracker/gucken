@@ -109,7 +109,7 @@ class AniWorldSearchResult(SearchResult):
 
 @dataclass
 class AniWorldProvider(Provider):
-    host = "aniworld.to"
+    host: str = "aniworld.to"
 
     @staticmethod
     async def search(keyword: str) -> Union[list[AniWorldSearchResult], None]:

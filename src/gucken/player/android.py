@@ -1,12 +1,7 @@
-from dataclasses import dataclass
-
 from .common import Player
 
 
-@dataclass
 class AndroidChoosePlayer(Player):
-    supports_headers = False
-
     def play(
             self,
             url: str,
@@ -30,10 +25,7 @@ class AndroidChoosePlayer(Player):
 
 
 # http://mpv-android.github.io/mpv-android/intent.html
-@dataclass
 class AndroidMPVPlayer(Player):
-    supports_headers = False
-
     def play(
             self,
             url: str,
@@ -57,10 +49,7 @@ class AndroidMPVPlayer(Player):
 
 
 # https://wiki.videolan.org/Android_Player_Intents/
-@dataclass
 class AndroidVLCPlayer(Player):
-    supports_headers = False
-
     def play(
             self,
             url: str,

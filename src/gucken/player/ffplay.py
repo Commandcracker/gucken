@@ -5,8 +5,8 @@ from .common import Player, dict_to_string
 
 @dataclass
 class FFPlayPlayer(Player):
-    executable = "ffplay"
-    supports_headers = True
+    executable: str = "ffplay"
+    supports_headers: bool = True
 
     def play(
             self,
