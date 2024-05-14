@@ -49,3 +49,7 @@ TabbedContent #--content-tab-setting {
 #setting > RadioButton {
     margin-bottom: 1;
 }
+
+ClickableListItem {
+    padding-bottom: -1;
+}

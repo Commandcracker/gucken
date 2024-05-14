@@ -6,7 +6,7 @@ from .vlc import VLCPlayer
 
 @dataclass
 class FlatpakMPVPlayer(MPVPlayer):
-    executable = None
+    executable: str = None
 
     def play(
             self,
@@ -28,7 +28,7 @@ class FlatpakMPVPlayer(MPVPlayer):
 
 @dataclass
 class FlatpakCelluloidPlayer(CelluloidPlayer):
-    executable = None
+    executable: str = None
 
     def play(
             self,
@@ -50,7 +50,7 @@ class FlatpakCelluloidPlayer(CelluloidPlayer):
 
 @dataclass
 class FlatpakVLCPlayer(VLCPlayer):
-    executable = None
+    executable: str = None
 
     def play(
             self,

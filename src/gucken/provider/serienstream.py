@@ -109,7 +109,7 @@ class SerienStreamSearchResult(SearchResult):
 
 @dataclass
 class SerienStreamProvider(Provider):
-    host = "186.2.175.5"
+    host: str = "186.2.175.5"
 
     @staticmethod
     async def search(keyword: str) -> Union[list[SerienStreamSearchResult], None]:

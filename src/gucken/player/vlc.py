@@ -5,7 +5,7 @@ from .common import Player
 
 @dataclass
 class VLCPlayer(Player):
-    executable = "vlc"
+    executable: str = "vlc"
 
     def play(
             self,

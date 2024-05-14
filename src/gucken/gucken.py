@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import sys
 from atexit import register as register_atexit
@@ -15,27 +14,41 @@ from typing import Union
 from pypresence import AioPresence, DiscordNotFound
 from textual import events, on, work
 from textual.app import App, ComposeResult
-from textual.containers import (Center, Container, Horizontal,
-                                ScrollableContainer)
+from textual.containers import Center, Container, Horizontal, ScrollableContainer
 from textual.reactive import reactive
 from textual.screen import ModalScreen
-from textual.widgets import (Button, Checkbox, DataTable, Footer, Header,
-                             Input, Label, ListItem, ListView, Markdown,
-                             RadioButton, TabbedContent, TabPane)
+from textual.widgets import (
+    Button,
+    Checkbox,
+    DataTable,
+    Footer,
+    Header,
+    Input,
+    Label,
+    ListItem,
+    ListView,
+    Markdown,
+    RadioButton,
+    TabbedContent,
+    TabPane,
+)
 
 from .update import check
-from .aniskip import (get_timings_from_search, timings_to_mpv_options, generate_chapters_file,
-                      get_chapters_file_mpv_option)
+from .aniskip import (
+    get_timings_from_search,
+    timings_to_mpv_options,
+    generate_chapters_file,
+    get_chapters_file_mpv_option,
+)
 from .hoster.common import DirectLink, Hoster
 from .hoster.doodstream import DoodstreamHoster
 from .hoster.streamtape import StreamtapeHoster
 from .hoster.veo import VOEHoster
 from .hoster.vidoza import VidozaHoster
-from .player.android import (AndroidChoosePlayer, AndroidMPVPlayer,
-                             AndroidVLCPlayer)
+from .player.android import AndroidChoosePlayer, AndroidMPVPlayer, AndroidVLCPlayer
 from .player.common import Player
 from .player.ffplay import FFPlayPlayer
-from .player.mpv import MPVPlayer, MPV_NETPlayer, CelluloidPlayer
+from .player.mpv import MPVPlayer, MPVNETPlayer, CelluloidPlayer
 from .player.vlc import VLCPlayer
 from .player.wmplayer import WMPlayer
 from .player.flatpak import FlatpakMPVPlayer, FlatpakVLCPlayer, FlatpakCelluloidPlayer
@@ -46,11 +59,13 @@ from .provider.serienstream import SerienStreamProvider
 # TODO: fix this mess
 logs_path = Path(__file__).parent.parent.parent.joinpath("logs")
 logs_path.mkdir(exist_ok=True, parents=True)
-logging.basicConfig(filename=logs_path.joinpath("gucken.log"), encoding='utf-8', level=logging.INFO)
+logging.basicConfig(
+    filename=logs_path.joinpath("gucken.log"), encoding="utf-8", level=logging.INFO
+)
 
 
 def detect_player() -> Union[Player, None]:
-    if hasattr(sys, 'getandroidapilevel'):
+    if hasattr(sys, "getandroidapilevel"):
         # TODO: detect right
         return AndroidMPVPlayer()
         # return AndroidVLCPlayer()
@@ -65,11 +80,11 @@ def detect_player() -> Union[Player, None]:
 
     if os_name == "nt":
         if which("mpvnet.exe"):
-            return MPV_NETPlayer()
+            return MPVNETPlayer()
         if getenv("LOCALAPPDATA"):
             mpvnet = join(getenv("LOCALAPPDATA"), "Programs", "mpv.net", "mpvnet.exe")
             if which(mpvnet):
-                return MPV_NETPlayer(mpvnet)
+                return MPVNETPlayer(mpvnet)
 
     if os_name == "posix":
         if which("celluloid"):
@@ -81,14 +96,28 @@ def detect_player() -> Union[Player, None]:
     if os_name == "posix":
         # TODO: fix this will slow down
         if which("flatpak"):
-            p = Popen(["flatpak", "info", "io.mpv.Mpv"], stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
+            p = Popen(
+                ["flatpak", "info", "io.mpv.Mpv"],
+                stdout=DEVNULL,
+                stderr=DEVNULL,
+                stdin=DEVNULL,
+            )
             if p.wait() == 0:
                 return FlatpakMPVPlayer()
-            p = Popen(["flatpak", "info", "io.github.celluloid_player.Celluloid"], stdout=DEVNULL, stderr=DEVNULL,
-                      stdin=DEVNULL)
+            p = Popen(
+                ["flatpak", "info", "io.github.celluloid_player.Celluloid"],
+                stdout=DEVNULL,
+                stderr=DEVNULL,
+                stdin=DEVNULL,
+            )
             if p.wait() == 0:
                 return FlatpakCelluloidPlayer()
-            p = Popen(["flatpak", "info", "org.videolan.VLC"], stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
+            p = Popen(
+                ["flatpak", "info", "org.videolan.VLC"],
+                stdout=DEVNULL,
+                stderr=DEVNULL,
+                stdin=DEVNULL,
+            )
             if p.wait() == 0:
                 return FlatpakVLCPlayer()
 
@@ -107,27 +136,38 @@ def detect_player() -> Union[Player, None]:
 
 
 def sort_favorite_lang(language_list: list[Language]) -> list[Language]:
-    return sorted(language_list, key=lambda x: (
-        x != Language.DE,
-        x != Language.JP_DESUB,
-        x != Language.JP_ENSUB,
-    ))
+    return sorted(
+        language_list,
+        key=lambda x: (
+            x != Language.DE,
+            x != Language.JP_DESUB,
+            x != Language.JP_ENSUB,
+        ),
+    )
 
 
 def sort_favorite_hoster(hoster_list: list[Hoster]) -> list[Hoster]:
-    return sorted(hoster_list, key=lambda x: (
-        not isinstance(x, StreamtapeHoster),
-        not isinstance(x, VOEHoster),
-        not isinstance(x, VidozaHoster),
-        not isinstance(x, DoodstreamHoster),
-    ))
+    return sorted(
+        hoster_list,
+        key=lambda x: (
+            not isinstance(x, StreamtapeHoster),
+            not isinstance(x, VOEHoster),
+            not isinstance(x, VidozaHoster),
+            not isinstance(x, DoodstreamHoster),
+        ),
+    )
 
 
 async def get_working_direct_link(hosters: list[Hoster]) -> Union[DirectLink, None]:
     for hoster in hosters:
         direct_link = await hoster.get_direct_link()
         is_working = await direct_link.check_is_working()
-        logging.info('Check: "%s" Working: "%s" URL: "%s"', type(hoster).__name__, is_working, direct_link)
+        logging.info(
+            'Check: "%s" Working: "%s" URL: "%s"',
+            type(hoster).__name__,
+            is_working,
+            direct_link,
+        )
         if is_working:
             return direct_link
     return None
@@ -272,7 +312,7 @@ class GuckenApp(App):
         if self.RPC is not None:
             await self.RPC.clear()
             # close without closing event loop
-            self.RPC.send_data(2, {'v': 1, 'client_id': self.RPC.client_id})
+            self.RPC.send_data(2, {"v": 1, "client_id": self.RPC.client_id})
             self.RPC.sock_writer.close()
             self.RPC = None
 
@@ -290,6 +330,7 @@ class GuckenApp(App):
         if message.value:
             self.lookup_anime(message.value)
         else:
+            # TODO: fix sometimes wont clear
             await self.query_one("#results", ListView).clear()
 
     # TODO: https://textual.textualize.io/guide/workers/#thread-workers
@@ -316,16 +357,19 @@ class GuckenApp(App):
         if len(final_results) > 0:
             self.current = final_results
             for series in final_results:
+                # TODO: show provider
                 await results_list_view.append(ClickableListItem(Markdown(
                     f"##### **{series.name}** {series.production_year}\n{series.description}"
                 )))
         results_list_view.loading = False
         if len(final_results) > 0:
+
             def select_first_index():
                 try:
                     results_list_view.index = 0
                 except AssertionError:
                     pass
+
             self.app.call_later(select_first_index)
 
     async def on_key(self, event: events.Key) -> None:
@@ -364,11 +408,7 @@ class GuckenApp(App):
         dt.loading = True
         index = self.app.query_one("#results", ListView).index
         series_search_result = self.current[index]
-        self.play(
-            series_search_result=series_search_result,
-            episodes=self.current_info.episodes,
-            index=dt.cursor_row
-        )
+        self.play(series_search_result=series_search_result, episodes=self.current_info.episodes, index=dt.cursor_row)
         dt.loading = False
 
     @work(exclusive=True)
@@ -467,13 +507,13 @@ class GuckenApp(App):
         if self.RPC and self.RPC.sock_writer:
             async def update():
                 await self.RPC.update(
-                    #state="00:20:00 / 00:25:00 57% complete",
+                    # state="00:20:00 / 00:25:00 57% complete",
                     details=title[:128],
                     large_text=title,
                     large_image=series_search_result.cover,
                     # small_image as playing or stopped ?
-                    #small_image="https://jooinn.com/images/lonely-tree-reflection-3.jpg",
-                    #small_text="ff 15",
+                    # small_image="https://jooinn.com/images/lonely-tree-reflection-3.jpg",
+                    # small_text="ff 15",
                     # start=time.time(), # for paused
                     # end=time.time() + timedelta(minutes=20).seconds   # for time left
                 )
@@ -534,12 +574,7 @@ class GuckenApp(App):
                     )
 
         logging.info("Running: %s", args)
-        process = Popen(
-            args,
-            stderr=PIPE,
-            stdout=DEVNULL,
-            stdin=DEVNULL
-        )
+        process = Popen(args, stderr=PIPE, stdout=DEVNULL, stdin=DEVNULL)
         while not self.app._exit:
             sleep(0.1)
 
