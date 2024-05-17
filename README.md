@@ -50,6 +50,10 @@ gucken
 
 Install [Termux:Widget](https://github.com/termux/termux-widget?tab=readme-ov-file#Installation).
 
+```
+mkdir ~/.shortcuts
+```
+
 ##### Lunch shortcut
 
 ```
