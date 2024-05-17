@@ -1,0 +1,24 @@
+# Default settings
+[settings]
+fullscreen  = true
+syncplay    = false
+ani-skip    = false
+#ani-skip_chapters = true
+discord_presence = false
+language    = [
+    "DE",
+    "EN",
+    "EN_DESUB",
+    "JP_DESUB",
+    "JP_ENSUB"
+]
+#player = "PLAYER"
+#player_args = ["--idk", "--owo"]
+#hoster = ["ST", "VEO"]
+
+[settings.providers]
+aniworld_to     = true
+serienstream_to = false
+
+[meta]
+version = "0.0.0"

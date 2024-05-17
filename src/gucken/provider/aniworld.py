@@ -13,15 +13,6 @@ from ..hoster.vidoza import VidozaHoster
 from .common import Episode, Hoster, Language, Provider, SearchResult, Series
 
 
-def data_lang_key_to_lang(data_lang_key: str) -> Language:
-    if data_lang_key == "1":
-        return Language.DE
-    if data_lang_key == "2":
-        return Language.JP_ENSUB
-    if data_lang_key == "3":
-        return Language.JP_DESUB
-
-
 def provider_to_hoster(provider: str, url: str) -> Hoster:
     if provider == "VOE":
         return VOEHoster(url)
@@ -31,6 +22,19 @@ def provider_to_hoster(provider: str, url: str) -> Hoster:
         return VidozaHoster(url)
     if provider == "Streamtape":
         return StreamtapeHoster(url)
+
+
+def lang_img_src_lang_name_to_lang(name: str) -> Language:
+    if name == "english":
+        return Language.EN
+    if name == "english-german":
+        return Language.EN_DESUB
+    if name == "japanese-english":
+        return Language.JP_ENSUB
+    if name == "japanese-german":
+        return Language.JP_DESUB
+    if name == "german":
+        return Language.DE
 
 
 @dataclass
@@ -51,19 +55,23 @@ class AniWorldEpisode(Episode):
                     "data-external-embed": True
                 }
             )
+            processed_hoster = {}
+            for l in Language:
+                processed_hoster[l] = list()
 
-            processed_hoster = {
-                Language.DE: list(),
-                Language.JP_DESUB: list(),
-                Language.JP_ENSUB: list(),
-            }
+            langs = soup.find("div", class_="changeLanguage").find_all("img")
+            lang_map = {}
+            for lang in langs:
+                lang_name = lang.attrs.get("src").split("/")[-1].rsplit(".", 1)[0]
+                data_lang_key = lang.attrs.get("data-lang-key")
+                lang_map[data_lang_key] = lang_img_src_lang_name_to_lang(lang_name)
 
             for episode in watch_episode:
                 data_link_id = episode.attrs.get("data-link-id")
                 provider = episode.find_next("h4").text
 
                 data_lang_key = episode.attrs.get("data-lang-key")
-                lang = data_lang_key_to_lang(data_lang_key)
+                lang = lang_map[data_lang_key]
 
                 hoster = provider_to_hoster(provider, f"https://{AniWorldProvider.host}/redirect/{data_link_id}")
 
@@ -88,7 +96,7 @@ class AniWorldSeries(Series):
             f"**Regisseure**: {', '.join(self.regisseure)}\\\n"
             f"**Schauspieler**: {', '.join(self.schauspieler)}\\\n"
             f"**Produzent**: {', '.join(self.produzent)}\\\n"
-            f"**Land**: {', '.join(self.land)}\n\n"
+            f"**Land**: {', '.join(self.land)}\\\n"
             f"**Tags**: {', '.join(self.tags)}"
         )
 
@@ -121,7 +129,7 @@ class AniWorldProvider(Provider):
             search_results = []
             for series in results:
                 search_results.append(AniWorldSearchResult(
-                    name=unescape(series.get("name")),
+                    name=unescape(series.get("name")).strip(),
                     link=series.get("link"),
                     description=unescape(series.get("description")),
                     cover=f"https://{AniWorldProvider.host}{series.get('cover')}",
@@ -180,8 +188,8 @@ class AniWorldProvider(Provider):
 
             return AniWorldSeries(
                 # cover=f"https://{search_result.host}" + soup.find("div", class_="seriesCoverBox").find("img").attrs.get("data-src"),
-                name=unescape(soup.find("h1", attrs={"itemprop": "name"}).find("span").text),
-                production_year=unescape(soup.find("div", class_="series-title").find("small").text).lstrip(),
+                name=unescape(soup.find("h1", attrs={"itemprop": "name"}).find("span").text).strip(),
+                production_year=unescape(soup.find("div", class_="series-title").find("small").text).strip(),
                 # age=int(soup.find("div", class_="fsk").find("span").text),
                 # imdb_link=soup.find("a", class_="imdb-link").attrs.get("href"),
                 full_description=unescape(soup.find("p", class_="seri_des").attrs.get("data-full-description")),
@@ -215,13 +223,8 @@ async def get_episodes_from_soup(staffel: int, url: str, soup: BeautifulSoup) ->
 
         language = set()
         for flag in episode.find_next("td", class_="editFunctions").find_all("img"):
-            t = flag.attrs.get("title")
-            if t == "Englisch":
-                language.add(Language.JP_ENSUB)
-            if t == "Deutsch/German":
-                language.add(Language.DE)
-            if t == "Mit deutschem Untertitel":
-                language.add(Language.JP_DESUB)
+            lang_name = flag.attrs.get("src").split("/")[-1].rsplit(".", 1)[0]
+            language.add(lang_img_src_lang_name_to_lang(lang_name))
 
         hoster = set()
         for h in episode.find_all_next("i", class_="icon"):
@@ -236,11 +239,12 @@ async def get_episodes_from_soup(staffel: int, url: str, soup: BeautifulSoup) ->
                 hoster.add(StreamtapeHoster)
 
         e_count += 1
-        title_en = title.find("span").text.lstrip()
-        title_de = title.find("strong").text.lstrip()
+        title_en = title.find("span").text.strip()
+        title_de = title.find("strong").text.strip()
+        title = f"{title_en} - {title_de}" if title_en and title_de else title_en or title_de
         episodes.append(AniWorldEpisode(
             url=url,
-            title=f"{title_en} - {title_de}",
+            title=title,
             season=staffel,
             episode_number=e_count,
             available_hoster=hoster,

@@ -1,19 +1,19 @@
 # Gucken
 
+Project state: **Pre-Alpha**
+
 ## Description
 
 Gucken is a Terminal User Interface which allows you to browse and watch your favorite anime's with style. 
 
 ## Usage
 
-Search
-![Search](.README/Search.png)
-and watch
-![Watch](.README/Watch.png)
+<img alt="Search" src="https://github.com/Commandcracker/gucken/assets/49335821/d91de2af-c086-485c-8aec-1e68cdb02aa3"/>
+<img alt="Watch" src="https://github.com/Commandcracker/gucken/assets/49335821/7354eeff-bd97-4226-91b9-317939128a81"/> 
 
 ## Installation
 
-### Windows
+<details><summary><b>Windows</b></summary>
 
 Install [Python] and if you are **on Windows 10** [Windows Terminal] for a better experience.
 
@@ -22,7 +22,9 @@ pip install gucken
 gucken
 ```
 
-### Linux
+</details>
+
+<details><summary><b>Linux</b></summary>
 
 Install [Python] and then
 
@@ -31,37 +33,63 @@ pip install gucken
 gucken
 ```
 
-### Android
+</details>
+
+<details><summary><b>Android</b></summary>
 
 Install [Termux](https://termux.dev/en/) and run:
 
 ```
-pkg update -y
-pkg upgrade -y
+yes|pkg update
 pkg install python ffmpeg -y
 pip install gucken
 gucken
 ```
 
-#### Optional
+#### Shortcut
 
-Setup storage for downloads.
+Install [Termux:Widget](https://github.com/termux/termux-widget?tab=readme-ov-file#Installation).
+
+##### Lunch shortcut
+
+```
+echo gucken>~/.shortcuts/Gucken
+```
+
+##### Update shortcut
+
+```
+echo pip install -U gucken>~/.shortcuts/Update\ Gucken
+```
+
+#### Custom Font
+
+If you want a custom font then just pace the ttf in `~/.termux/font.ttf`. Recommended fonts: [Nerd fonts](https://www.nerdfonts.com/font-downloads) (**Only use Mono fonts!**)
+
+#### Downloads
+
+Setup storage for downloads. (Default download location: `/data/data/com.termux/files/home/storage/movies`)
 
 ```
 termux-setup-storage
 ```
 
+</details>
+
 ## Features
 
 - [x] Update checker
+- [x] Language priority list
+- [ ] Hoster priority list
+- [x] Automatically use working hoster
 - [x] Browsing
   - [x] Descriptions
 - [x] Watching
   - [x] Automatically start next episode
   - [x] Discord Presence **WIP**
   - [MPV] only
-    - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support **Very WIP**
-    - [x] [Syncplay](https://github.com/Syncplay/syncplay) support
+    - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support **Very WIP** (need skip plugin)
+    - [x] [Syncplay](https://github.com/Syncplay/syncplay) support (almost out of WIP)
     - [ ] Remember watch time **WIP**
     - [ ] Remember completed Episodes (and series)
   - [ ] Tracker support
@@ -77,16 +105,19 @@ List of supported Anime sites
 
 - [x] [AniWorld.to] & [SerienStream.to]
   - [ ] Filme
-  - [ ] Language Selection
-  - [x] Automatically use working provider
-    - [x] Streamtape
-    - [x] VEO
-    - [x] Vidoza
-    - [x] Doodstream
 - [ ] [bs.to](https://bs.to/)
 - [ ] [www3.streamcloud.info](https://www3.streamcloud.info/)
 - [ ] [www.crunchyroll.com](https://www.crunchyroll.com)
 - [ ] Add some from [International Piracy Sites German](https://fmhy.net/non-english#german-deutsch)
+
+## Hoster
+
+List of supported video hoster.
+
+- [x] Streamtape
+- [x] VEO
+- [x] Vidoza
+- [x] Doodstream
 
 ## Player
 
@@ -112,10 +143,22 @@ List of supported video players
 - MacOS
   - [ ] [IINA](https://iina.io/)
 
+## Custom CSS
+
+**For power users only**
+
+Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and it will be automatically loaded by Gucken.
+
+- [Textual CSS Guide](https://textual.textualize.io/guide/CSS/)
+- [Textual CSS Reference](https://textual.textualize.io/css_types/)
+
 ## Todo
 
 - [ ] Up-scaling (after download)
   - [ ] [video2x](https://github.com/k4yt3x/video2x)
+  - [ ] [waifu2x](https://github.com/nagadomi/waifu2x)
+  - [ ] [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
+  - [ ] [FSRCNN](https://github.com/igv/FSRCNN-TensorFlow)
   - [ ] [Anime4k]
 - [ ] Proxy support
   ```
@@ -143,7 +186,6 @@ List of supported video players
   selenium or playwright
   ```
 - [ ] [MPV] Screen selection
-- [ ] Save settings
 - [ ] Custom player args
 - [ ] Custom player
 - [ ] Colors themes
@@ -162,13 +204,39 @@ List of supported video players
 - [ ] Pre-fetching
 - [ ] improve [ani-skip](https://github.com/synacktraa/ani-skip) support
 - [ ] Use something like opencv to time match a sub from aniworld with a high quality video form another site.
-- [ ] Image preview
+- [ ] Image preview (Kitty protocol, iterm protocol, Sixel, textual-web)
+- [ ] Support textual-web
 - [ ] Blacklist detection & bypass
 - [ ] Syncplay on Android
 - [ ] Mac support
 - [ ] IOS support
 - [ ] Option to disable update checker
 - [ ] Update checker option to perform update
+- [ ] Snap support ?
+- [ ] 404 detection inside Hoster and don't crash whole program on http error + crash reports/logs
+- [ ] s.to, aniworld.to scrape episode description
+- [ ] search in episodes
+- [ ] Focus window when ask next
+- [ ] next and cancel hotkeys
+- [ ] show hotkeys in Footer
+- [ ] ani-skip load skip plugin from src
+- [ ] ani-skip only to get chapters
+- [ ] Window in settings menu to show where files are located (data, logs, config, downloads)
+- [ ] Utilize next and previous buttons in mpv
+- [ ] Nix
+- [ ] Docker
+- [ ] Flatpack ?
+- [ ] Merge anime's from SerienStream.to to AniWorld.to to get more langs
+- [ ] Fix title
+- [ ] Do unescape and stripe only on render
+- [ ] Dont coppy code from SerienStream.to to AniWorld.to
+- [ ] FIX TYPING SOMETIMES CAUSES CRASH
+- [ ] option to disable debug logging
+- [ ] BIG CODE CLEANUP
+- [ ] Player selection
+- [ ] Hoster prio list
+- [ ] Translation
+- [ ] detect existing chapters and use them for skip
 
 [Anime4k]: https://github.com/bloc97/Anime4K
 [MPV]: https://mpv.io/
