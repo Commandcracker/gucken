@@ -8,6 +8,8 @@ from ..hoster.common import Hoster
 
 class Language(Enum):
     DE = "Deutsch"
+    EN = "English"
+    EN_DESUB = "English mit deutschen untertitel"
     JP_DESUB = "Japanisch mit deutschen untertitel"
     JP_ENSUB = "Japanisch mit englischen untertitel"
 

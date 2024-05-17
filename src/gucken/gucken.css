@@ -34,11 +34,15 @@ Next > Container > Horizontal > Button {
 
 #markdown {
     margin: 0 0;
+    margin-top: -1;
 }
 
+/*TODO: make height 100 of what the table needs, so there is only one scroll*/
 #season_list {
     margin: 1 0;
+    margin-top: 0;
     margin-bottom: 0;
+    min-height: 3;
 }
 
 TabbedContent #--content-tab-setting {
@@ -52,4 +56,8 @@ TabbedContent #--content-tab-setting {
 
 ClickableListItem {
     padding-bottom: -1;
+    padding-left: -2;
+    padding-right: -2;
 }
+
+/*$accent: lime;*/

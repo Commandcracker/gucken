@@ -1,19 +1,18 @@
 import logging
-import sys
 from atexit import register as register_atexit
 from asyncio import gather
-from os import name as os_name, getenv, remove
-from os.path import join
-from pathlib import Path
+from os import name as os_name, remove
+from .settings import gucken_settings_manager
 from random import choice
 from shutil import which
 from subprocess import PIPE, Popen, DEVNULL
 from time import sleep, time
-from typing import Union
+from typing import Union, ClassVar, List
 
 from pypresence import AioPresence, DiscordNotFound
 from textual import events, on, work
 from textual.app import App, ComposeResult
+from textual.binding import BindingType, Binding
 from textual.containers import Center, Container, Horizontal, ScrollableContainer
 from textual.reactive import reactive
 from textual.screen import ModalScreen
@@ -33,6 +32,8 @@ from textual.widgets import (
     TabPane,
 )
 
+from .utils import detect_player, is_android
+from .custom_widgets import SortableTable
 from .update import check
 from .aniskip import (
     get_timings_from_search,
@@ -45,105 +46,43 @@ from .hoster.doodstream import DoodstreamHoster
 from .hoster.streamtape import StreamtapeHoster
 from .hoster.veo import VOEHoster
 from .hoster.vidoza import VidozaHoster
-from .player.android import AndroidChoosePlayer, AndroidMPVPlayer, AndroidVLCPlayer
-from .player.common import Player
-from .player.ffplay import FFPlayPlayer
-from .player.mpv import MPVPlayer, MPVNETPlayer, CelluloidPlayer
+from .player.mpv import MPVPlayer
 from .player.vlc import VLCPlayer
-from .player.wmplayer import WMPlayer
-from .player.flatpak import FlatpakMPVPlayer, FlatpakVLCPlayer, FlatpakCelluloidPlayer
 from .provider.aniworld import AniWorldProvider
 from .provider.common import Episode, Language, SearchResult, Series
 from .provider.serienstream import SerienStreamProvider
+from platformdirs import user_log_path, user_config_path
 
-# TODO: fix this mess
-logs_path = Path(__file__).parent.parent.parent.joinpath("logs")
-logs_path.mkdir(exist_ok=True, parents=True)
+logs_path = user_log_path("gucken", ensure_exists=True)
 logging.basicConfig(
-    filename=logs_path.joinpath("gucken.log"), encoding="utf-8", level=logging.INFO
+    filename=logs_path.joinpath("gucken.log"),
+    encoding="utf-8",
+    level=logging.INFO
 )
 
-
-def detect_player() -> Union[Player, None]:
-    if hasattr(sys, "getandroidapilevel"):
-        # TODO: detect right
-        return AndroidMPVPlayer()
-        # return AndroidVLCPlayer()
-        # return AndroidChoosePlayer()
-        # return None
-
-    if os_name == "nt":
-        if which("mpv.exe"):
-            return MPVPlayer("mpv.exe")
-    elif which("mpv"):
-        return MPVPlayer()
-
-    if os_name == "nt":
-        if which("mpvnet.exe"):
-            return MPVNETPlayer()
-        if getenv("LOCALAPPDATA"):
-            mpvnet = join(getenv("LOCALAPPDATA"), "Programs", "mpv.net", "mpvnet.exe")
-            if which(mpvnet):
-                return MPVNETPlayer(mpvnet)
-
-    if os_name == "posix":
-        if which("celluloid"):
-            return CelluloidPlayer()
-
-    if which("vlc"):
-        return VLCPlayer()
-
-    if os_name == "posix":
-        # TODO: fix this will slow down
-        if which("flatpak"):
-            p = Popen(
-                ["flatpak", "info", "io.mpv.Mpv"],
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-                stdin=DEVNULL,
-            )
-            if p.wait() == 0:
-                return FlatpakMPVPlayer()
-            p = Popen(
-                ["flatpak", "info", "io.github.celluloid_player.Celluloid"],
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-                stdin=DEVNULL,
-            )
-            if p.wait() == 0:
-                return FlatpakCelluloidPlayer()
-            p = Popen(
-                ["flatpak", "info", "org.videolan.VLC"],
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-                stdin=DEVNULL,
-            )
-            if p.wait() == 0:
-                return FlatpakVLCPlayer()
-
-    if os_name == "nt":
-        vlc = r"C:\Program Files\VideoLAN\VLC\vlc.exe"
-        if which(vlc):
-            return VLCPlayer(vlc)
-
-    if which("ffplay"):
-        return FFPlayPlayer()
-
-    if os_name == "nt":
-        return WMPlayer()
-
-    return None
+register_atexit(gucken_settings_manager.save)
 
 
-def sort_favorite_lang(language_list: list[Language]) -> list[Language]:
-    return sorted(
-        language_list,
-        key=lambda x: (
-            x != Language.DE,
-            x != Language.JP_DESUB,
-            x != Language.JP_ENSUB,
-        ),
-    )
+def sort_favorite_lang(language_list: List[Language], pio_list: List[str]) -> List[Language]:
+    def lang_sort_key(hoster: Language) -> int:
+        try:
+            return pio_list.index(hoster.name)
+        except ValueError:
+            return len(pio_list)
+
+    return sorted(language_list, key=lang_sort_key)
+
+
+"""
+def sort_favorite_hoster(hoster_list: List[Hoster], pio_list: List[Type[Hoster]]) -> List[Hoster]:
+    def hoster_sort_key(hoster: Hoster) -> int:
+        try:
+            return pio_list.index(type(hoster))
+        except ValueError:
+            return len(pio_list)
+
+    return sorted(hoster_list, key=hoster_sort_key)
+"""
 
 
 def sort_favorite_hoster(hoster_list: list[Hoster]) -> list[Hoster]:
@@ -233,13 +172,45 @@ class ClickableDataTable(DataTable):
         self.last_click[row_index] = time()
 
 
+def remove_duplicates(lst: list) -> list:
+    """
+    Why this instead of a set you ask ?
+    Because a set cant maintaining the original order.
+    """
+    seen = set()
+    result = []
+    for item in lst:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+
+def remove_none_lang_keys(lst: list) -> list:
+    valid_languages = {lang.name for lang in Language}
+    return [item for item in lst if item in valid_languages]
+
+
+def move_item(lst: list, from_index: int, to_index: int) -> list:
+    item = lst.pop(from_index)
+    lst.insert(to_index, item)
+    return lst
+
+
 client_id = "1238219157464416266"
 
 
 class GuckenApp(App):
     TITLE = "Gucken TUI"
     # TODO: color theme https://textual.textualize.io/guide/design/#designing-with-colors
-    CSS_PATH = "gucken.tcss"
+
+    CSS_PATH = ["gucken.css"]
+    custom_css = user_config_path("gucken").joinpath("custom.css")
+    if custom_css.exists():
+        CSS_PATH.append(custom_css)
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding("q", "quit", "Quit", show=True, priority=False),
+    ]
 
     def __init__(self):
         super().__init__()
@@ -248,13 +219,24 @@ class GuckenApp(App):
         self.player = detect_player()
         self.RPC: Union[AioPresence, None] = None
 
+        language: list = gucken_settings_manager.settings["settings"]["language"]
+        language = remove_none_lang_keys(language)
+
+        for ll in Language:
+            language.append(ll.name)
+
+        gucken_settings_manager.settings["settings"]["language"] = remove_duplicates(language)
+        self.language = gucken_settings_manager.settings["settings"]["language"]
+
     def compose(self) -> ComposeResult:
+        settings = gucken_settings_manager.settings["settings"]
+        providers = settings["providers"]
         yield Header()
         with TabbedContent():
             with TabPane("Search", id="search"):  # Search "🔎"
                 with Horizontal(id="hosters"):
-                    yield Checkbox("AniWorld.to", True, id="aniworld_to")
-                    yield Checkbox("SerienStream.to", id="serienstream_to")
+                    yield Checkbox("AniWorld.to", value=providers["aniworld_to"], id="aniworld_to")
+                    yield Checkbox("SerienStream.to", value=providers["serienstream_to"], id="serienstream_to")
                 yield Input(id="input", placeholder="Search for a Anime")
                 yield ListView(id="results")
             with TabPane("Info", id="info", disabled=True):  # Info "ℹ"
@@ -263,10 +245,12 @@ class GuckenApp(App):
                     yield ClickableDataTable(id="season_list")
             with TabPane("Settings", id="setting"):  # Settings "⚙"
                 # TODO: dont show unneeded on android
-                yield RadioButton("Fullscreen", id="fullscreen", value=True)
-                yield RadioButton("Syncplay", id="syncplay", value=False)
-                yield RadioButton("ani-skip", id="ani_skip", value=True)
-                yield RadioButton("Discord Presence", id="discord_presence", value=False)
+                with Container():
+                    yield SortableTable(id="lang")
+                    yield RadioButton("Fullscreen", id="fullscreen", value=settings["fullscreen"])
+                    yield RadioButton("Syncplay", id="syncplay", value=settings["syncplay"])
+                    yield RadioButton("ani-skip", id="ani-skip", value=settings["ani-skip"])
+                    yield RadioButton("Discord Presence", id="discord_presence", value=settings["discord_presence"])
             # with RadioSet():
             #    yield RadioButton("VOE", id="voe", value=True)
             #    yield RadioButton("Doodstream", id="doodstream")
@@ -274,18 +258,22 @@ class GuckenApp(App):
             #    yield RadioButton("Streamtape", id="streamtape")
         with Footer():
             with Center():
-                yield Label("Made by Commandcracker with ❤")
+                yield Label("Made by Commandcracker with [red]:heart:[/red]")
 
     # TODO: dont lock - no async
     async def on_mount(self) -> None:
+        lang = self.query_one("#lang", DataTable)
+        lang.add_columns("Language")
+        for l in self.language:
+            lang.add_row(l)
         self.query_one(Input).focus()
         # TODO: FIx sometimes not disabling loading
         # TODO: dont lock
         self.query_one("#info", TabPane).loading = True
-        table = self.query_one(DataTable)
+        table = self.query_one("#season_list", DataTable)
         table.cursor_type = "row"
         # TODO: make them scale
-        table.add_columns("FT", "S", "F", "Name", "Title", "Hoster", "Sprache")
+        table.add_columns("FT", "S", "F", "Title", "Hoster", "Sprache")
         if self.player is None:
             self.notify(
                 "You wont be able to play videos.\n"
@@ -316,15 +304,20 @@ class GuckenApp(App):
             self.RPC.sock_writer.close()
             self.RPC = None
 
-    async def on_checkbox_changed(self):
+    async def on_checkbox_changed(self, event: Checkbox.Changed):
+        gucken_settings_manager.settings["settings"]["providers"][event.control.id] = event.value
         self.lookup_anime(self.query_one("#input", Input).value)
 
     async def on_radio_button_changed(self, event: RadioButton.Changed):
+        gucken_settings_manager.settings["settings"][event.control.id] = event.value
         if event.radio_button.id == "discord_presence":
             if event.value is True:
                 await self.enable_RPC()
             else:
                 await self.disable_RPC()
+
+    async def on_sortable_table_sort_changed(self, event: SortableTable.SortChanged) -> None:
+        move_item(self.language, event.previous, event.now)
 
     async def on_input_changed(self, message: Input.Changed) -> None:
         if message.value:
@@ -359,7 +352,7 @@ class GuckenApp(App):
             for series in final_results:
                 # TODO: show provider
                 await results_list_view.append(ClickableListItem(Markdown(
-                    f"##### **{series.name}** {series.production_year}\n{series.description}"
+                    f"##### {series.name} {series.production_year}\n{series.description}"
                 )))
         results_list_view.loading = False
         if len(final_results) > 0:
@@ -398,12 +391,12 @@ class GuckenApp(App):
                             inp.action_delete_left()
                         else:
                             await inp.on_event(event)
-            if key == "enter" and self.query_one(DataTable).has_focus:
+            if key == "enter" and self.query_one("#season_list", DataTable).has_focus:
                 self.play_selected()
 
     @work(exclusive=True)
     async def play_selected(self):
-        dt = self.query_one(DataTable)
+        dt = self.query_one("#season_list", DataTable)
         # TODO: show loading
         dt.loading = True
         index = self.app.query_one("#results", ListView).index
@@ -423,7 +416,7 @@ class GuckenApp(App):
         self.current_info = series
         await md.update(series.to_markdown())
 
-        table = self.query_one(DataTable)
+        table = self.query_one("#season_list", DataTable)
         table.clear()
         c = 0
         for ep in series.episodes:
@@ -440,12 +433,7 @@ class GuckenApp(App):
 
             ll = []
             for l in ep.available_language:
-                if l == Language.DE:
-                    ll.append("DE")
-                if l == Language.JP_DESUB:
-                    ll.append("JP_DESUB")
-                if l == Language.JP_ENSUB:
-                    ll.append("JP_ENSUB")
+                ll.append(l.name)
 
             c += 1
             table.add_row(
@@ -453,9 +441,8 @@ class GuckenApp(App):
                 ep.season,
                 ep.episode_number,
                 ep.title,
-                "",
-                ", ".join(hl),
-                ", ".join(ll)
+                " ".join(hl),
+                " ".join(ll)
             )
         table.focus(scroll_visible=False)
         info_tab.loading = False
@@ -480,7 +467,15 @@ class GuckenApp(App):
         episode: Episode = episodes[index]
         processed_hoster = await episode.process_hoster()
 
-        lang = sort_favorite_lang(episode.available_language)[0]
+        if len(episode.available_language) <= 0:
+            self.notify(
+                "The episode you are trying to watch has no stream available.",
+                title="No stream available",
+                severity="error",
+            )
+            return
+
+        lang = sort_favorite_lang(episode.available_language, self.language)[0]
         sorted_hoster = sort_favorite_hoster(processed_hoster.get(lang))
         direct_link = await get_working_direct_link(sorted_hoster)
 
@@ -497,7 +492,7 @@ class GuckenApp(App):
 
         # TODO: ani_skip, syncplay, fullscreen as cli arg
         # TODO: pass ani_skip as script
-        ani_skip = self.query_one("#ani_skip", RadioButton).value
+        ani_skip = self.query_one("#ani-skip", RadioButton).value
         syncplay = self.query_one("#syncplay", RadioButton).value
         fullscreen = self.query_one("#fullscreen", RadioButton).value
 
@@ -524,7 +519,7 @@ class GuckenApp(App):
 
         # TODO: cache more
         if isinstance(self.player, MPVPlayer):
-            if ani_skip:
+            if ani_skip is True:
                 timings = await get_timings_from_search(series_search_result.name, index + 1)
                 if timings:
                     chapters_file = generate_chapters_file(timings)
@@ -574,6 +569,10 @@ class GuckenApp(App):
                     )
 
         logging.info("Running: %s", args)
+        # TODO: detach on linux
+        # multiprocessing
+        # child_pid = os.fork()
+        # if child_pid == 0:
         process = Popen(args, stderr=PIPE, stdout=DEVNULL, stdin=DEVNULL)
         while not self.app._exit:
             sleep(0.1)
@@ -616,9 +615,13 @@ class GuckenApp(App):
                             )
 
                     await self.app.push_screen(
-                        Next("Playing next episode in", no_time=hasattr(sys, 'getandroidapilevel')), callback=play_next)
+                        Next("Playing next episode in", no_time=is_android), callback=play_next)
 
-                self.app.call_later(push_next_screen)
+                if not len(episodes) <= index + 1:
+                    self.app.call_later(push_next_screen)
+                else:
+                    # TODO: ask to mark as completed
+                    pass
                 return
 
 
