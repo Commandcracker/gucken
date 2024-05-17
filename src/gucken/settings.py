@@ -60,7 +60,7 @@ class SettingsManager:
             self.save()
 
     def save(self):
-        self.default_settings_file.parent.mkdir(exist_ok=True, parents=True)
+        self.settings_file.parent.mkdir(exist_ok=True, parents=True)
         _save_settings(self.settings, self.settings_file)
 
 
