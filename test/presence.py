@@ -1,6 +1,10 @@
-from pypresence import Presence, DiscordNotFound  # The simple rich presence client in pypresence
 import time
 from datetime import timedelta
+
+from pypresence import (  # The simple rich presence client in pypresence
+    DiscordNotFound,
+    Presence,
+)
 
 client_id = "1238219157464416266"  # Put your Client ID in here
 RPC = Presence(client_id)  # Initialize the Presence client
@@ -13,8 +17,8 @@ RPC.update(
     # small_image as playing or stopped ?
     small_image="https://jooinn.com/images/lonely-tree-reflection-3.jpg",
     small_text="ff 15",
-    #start=time.time(), # for paused
-    #end=time.time() + timedelta(minutes=20).seconds   # for time left
-) # Updates our presence
+    # start=time.time(), # for paused
+    # end=time.time() + timedelta(minutes=20).seconds   # for time left
+)  # Updates our presence
 while True:  # The presence will stay on as long as the program is running
     time.sleep(15)  # Can only update rich presence every 15 seconds

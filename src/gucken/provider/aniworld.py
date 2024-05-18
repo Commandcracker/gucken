@@ -43,7 +43,9 @@ class AniWorldEpisode(Episode):
 
     async def process_hoster(self) -> dict[Language, list[Hoster]]:
         async with AsyncClient(verify=False) as client:
-            response = await client.get(f"{self.url}/staffel-{self.season}/episode-{self.episode_number}")
+            response = await client.get(
+                f"{self.url}/staffel-{self.season}/episode-{self.episode_number}"
+            )
             soup = BeautifulSoup(response.text, "html.parser")
             watch_episode = soup.find_all(
                 "li",
@@ -52,8 +54,8 @@ class AniWorldEpisode(Episode):
                     "data-lang-key": True,
                     "data-link-id": True,
                     "data-link-target": True,
-                    "data-external-embed": True
-                }
+                    "data-external-embed": True,
+                },
             )
             processed_hoster = {}
             for l in Language:
@@ -73,7 +75,9 @@ class AniWorldEpisode(Episode):
                 data_lang_key = episode.attrs.get("data-lang-key")
                 lang = lang_map[data_lang_key]
 
-                hoster = provider_to_hoster(provider, f"https://{AniWorldProvider.host}/redirect/{data_link_id}")
+                hoster = provider_to_hoster(
+                    provider, f"https://{AniWorldProvider.host}/redirect/{data_link_id}"
+                )
 
                 processed_hoster[lang].append(hoster)
 
@@ -124,28 +128,34 @@ class AniWorldProvider(Provider):
         if keyword.strip() == "":
             return None
         async with AsyncClient(verify=False) as client:
-            response = await client.get(f"https://{AniWorldProvider.host}/ajax/seriesSearch?keyword={keyword}")
+            response = await client.get(
+                f"https://{AniWorldProvider.host}/ajax/seriesSearch?keyword={keyword}"
+            )
             results = response.json()
             search_results = []
             for series in results:
-                search_results.append(AniWorldSearchResult(
-                    name=unescape(series.get("name")).strip(),
-                    link=series.get("link"),
-                    description=unescape(series.get("description")),
-                    cover=f"https://{AniWorldProvider.host}{series.get('cover')}",
-                    production_year=series.get("productionYear"),
-                    host=AniWorldProvider.host
-                ))
+                search_results.append(
+                    AniWorldSearchResult(
+                        name=unescape(series.get("name")).strip(),
+                        link=series.get("link"),
+                        description=unescape(series.get("description")),
+                        cover=f"https://{AniWorldProvider.host}{series.get('cover')}",
+                        production_year=series.get("productionYear"),
+                        host=AniWorldProvider.host,
+                    )
+                )
             return search_results
 
     @staticmethod
     async def get_series(search_result: AniWorldSearchResult) -> AniWorldSeries:
-        async with (AsyncClient(verify=False) as client):
+        async with AsyncClient(verify=False) as client:
             response = await client.get(search_result.url)
             soup = BeautifulSoup(response.text, "html.parser")
 
             tags = []
-            for genre in soup.find_all("a", class_="genreButton clearbutton", attrs={"itemprop": "genre"}):
+            for genre in soup.find_all(
+                "a", class_="genreButton clearbutton", attrs={"itemprop": "genre"}
+            ):
                 tags.append(genre.text)
 
             actors = []
@@ -154,31 +164,39 @@ class AniWorldProvider(Provider):
 
             creators = []
             for creator in soup.find_all("li", attrs={"itemprop": "creator"}):
-                creators.append(creator.find_next("span", attrs={"itemprop": "name"}).text)
+                creators.append(
+                    creator.find_next("span", attrs={"itemprop": "name"}).text
+                )
 
             countrys = []
             for country in soup.find_all("li", attrs={"data-content-type": "country"}):
-                countrys.append(country.find_next("span", attrs={"itemprop": "name"}).text)
+                countrys.append(
+                    country.find_next("span", attrs={"itemprop": "name"}).text
+                )
 
             directors = []
             for director in soup.find_all("li", attrs={"itemprop": "director"}):
-                directors.append(director.find_next("span", attrs={"itemprop": "name"}).text)
+                directors.append(
+                    director.find_next("span", attrs={"itemprop": "name"}).text
+                )
 
             funcs = []
 
-            staffeln = soup.find("div", attrs={"id": "stream"}, class_="hosterSiteDirectNav").find("ul").find_all("a")
+            staffeln = (
+                soup.find("div", attrs={"id": "stream"}, class_="hosterSiteDirectNav")
+                .find("ul")
+                .find_all("a")
+            )
             count = 0
             for staffel in staffeln:
                 # TODO: Filme
                 if staffel.text != "Filme":
                     count += 1
                     if count > 1:
-                        funcs.append(
-                            get_episodes_from_url(count, search_result.url))
+                        funcs.append(get_episodes_from_url(count, search_result.url))
 
             eps = await gather(
-                get_episodes_from_soup(1, search_result.url, soup),
-                *funcs
+                get_episodes_from_soup(1, search_result.url, soup), *funcs
             )
 
             feps = []
@@ -188,11 +206,17 @@ class AniWorldProvider(Provider):
 
             return AniWorldSeries(
                 # cover=f"https://{search_result.host}" + soup.find("div", class_="seriesCoverBox").find("img").attrs.get("data-src"),
-                name=unescape(soup.find("h1", attrs={"itemprop": "name"}).find("span").text).strip(),
-                production_year=unescape(soup.find("div", class_="series-title").find("small").text).strip(),
+                name=unescape(
+                    soup.find("h1", attrs={"itemprop": "name"}).find("span").text
+                ).strip(),
+                production_year=unescape(
+                    soup.find("div", class_="series-title").find("small").text
+                ).strip(),
                 # age=int(soup.find("div", class_="fsk").find("span").text),
                 # imdb_link=soup.find("a", class_="imdb-link").attrs.get("href"),
-                full_description=unescape(soup.find("p", class_="seri_des").attrs.get("data-full-description")),
+                full_description=unescape(
+                    soup.find("p", class_="seri_des").attrs.get("data-full-description")
+                ),
                 regisseure=directors,
                 schauspieler=actors,
                 produzent=creators,
@@ -201,7 +225,7 @@ class AniWorldProvider(Provider):
                 # rating_value=int(soup.find("span", attrs={"itemprop": "ratingValue"}).text),
                 # rating_count=int(soup.find("span", attrs={"itemprop": "ratingCount"}).text),
                 # staffeln=count,
-                episodes=feps
+                episodes=feps,
             )
 
 
@@ -212,13 +236,19 @@ async def get_episodes_from_url(staffel: int, url: str) -> list[Episode]:
 
 
 async def get_episodes_from_page(staffel: int, url: str, page: str) -> list[Episode]:
-    return await get_episodes_from_soup(staffel, url, BeautifulSoup(page, "html.parser"))
+    return await get_episodes_from_soup(
+        staffel, url, BeautifulSoup(page, "html.parser")
+    )
 
 
-async def get_episodes_from_soup(staffel: int, url: str, soup: BeautifulSoup) -> list[Episode]:
+async def get_episodes_from_soup(
+    staffel: int, url: str, soup: BeautifulSoup
+) -> list[Episode]:
     episodes = []
     e_count = 0
-    for episode in soup.find("table", class_="seasonEpisodesList").find("tbody").find_all("tr"):
+    for episode in (
+        soup.find("table", class_="seasonEpisodesList").find("tbody").find_all("tr")
+    ):
         title = episode.find_next("td", class_="seasonEpisodeTitle")
 
         language = set()
@@ -241,19 +271,25 @@ async def get_episodes_from_soup(staffel: int, url: str, soup: BeautifulSoup) ->
         e_count += 1
         title_en = title.find("span").text.strip()
         title_de = title.find("strong").text.strip()
-        title = f"{title_en} - {title_de}" if title_en and title_de else title_en or title_de
-        episodes.append(AniWorldEpisode(
-            url=url,
-            title=title,
-            season=staffel,
-            episode_number=e_count,
-            available_hoster=hoster,
-            available_language=language,
-            total_episode_number=None
-            # language=language,
-            # hoster=hoster,
-            # number=e_count,
-            # staffel=staffel
-        ))
+        title = (
+            f"{title_en} - {title_de}"
+            if title_en and title_de
+            else title_en or title_de
+        )
+        episodes.append(
+            AniWorldEpisode(
+                url=url,
+                title=title,
+                season=staffel,
+                episode_number=e_count,
+                available_hoster=hoster,
+                available_language=language,
+                total_episode_number=None,
+                # language=language,
+                # hoster=hoster,
+                # number=e_count,
+                # staffel=staffel
+            )
+        )
 
     return episodes

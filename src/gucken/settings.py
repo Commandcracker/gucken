@@ -1,7 +1,8 @@
-from typing import Dict, Union
 from pathlib import Path
-from platformdirs import user_config_path
+from typing import Dict, Union
+
 import toml
+from platformdirs import user_config_path
 
 
 def _merge_dicts(dict1: Dict, dict2: Dict) -> Dict:
@@ -22,7 +23,7 @@ def _merge_dicts(dict1: Dict, dict2: Dict) -> Dict:
 
 def _load_settings(file_path: Union[str, Path], default_settings: Dict) -> Dict:
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             loaded_settings = toml.load(file)
     except FileNotFoundError:
         loaded_settings = {}
@@ -30,17 +31,17 @@ def _load_settings(file_path: Union[str, Path], default_settings: Dict) -> Dict:
 
 
 def _save_settings(settings: Dict, file_path: Union[str, Path]) -> None:
-    with open(file_path, 'w') as file:
+    with open(file_path, "w") as file:
         toml.dump(settings, file)
 
 
 class SettingsManager:
     def __init__(
-            self,
-            default_settings_file: Path,
-            settings_file: Path,
-            load_on_init=True,
-            save_on_load=True
+        self,
+        default_settings_file: Path,
+        settings_file: Path,
+        load_on_init=True,
+        save_on_load=True,
     ):
         super().__init__()
         self.default_settings_file = default_settings_file
@@ -51,7 +52,7 @@ class SettingsManager:
             self.load()
 
     def load(self):
-        with open(self.default_settings_file, 'r') as file:
+        with open(self.default_settings_file, "r") as file:
             default_settings = toml.load(file)
 
         self.settings = _load_settings(self.settings_file, default_settings)
@@ -79,5 +80,5 @@ class GuckenSettingsManager(Singleton, SettingsManager):
 
 gucken_settings_manager = GuckenSettingsManager(
     default_settings_file=Path(__file__).parent.joinpath("default_settings.toml"),
-    settings_file=user_config_path("gucken").joinpath("settings.toml")
+    settings_file=user_config_path("gucken").joinpath("settings.toml"),
 )

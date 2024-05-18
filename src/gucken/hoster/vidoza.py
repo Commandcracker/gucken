@@ -5,7 +5,9 @@ from httpx import AsyncClient
 from .common import DirectLink, Hoster
 
 # TODO: improve all patterns
-EXTRACT_VIDOZA_HLS_PATTERN = re_compile(r"sourcesCode:.*?\[.*?\{.*?src:.*?[\'|\"](?P<hls>.*?)[\'|\"],")
+EXTRACT_VIDOZA_HLS_PATTERN = re_compile(
+    r"sourcesCode:.*?\[.*?\{.*?src:.*?[\'|\"](?P<hls>.*?)[\'|\"],"
+)
 
 
 class VidozaHoster(Hoster):

@@ -12,7 +12,9 @@ class DirectLink:
     async def check_is_working(self) -> bool:
         try:
             async with AsyncClient(verify=False) as client:
-                response = await client.head(self.url, follow_redirects=True, headers=self.headers)
+                response = await client.head(
+                    self.url, follow_redirects=True, headers=self.headers
+                )
                 return response.is_success
         except HTTPError:
             return False

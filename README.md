@@ -84,7 +84,7 @@ termux-setup-storage
 
 - [x] Update checker
 - [x] Language priority list
-- [ ] Hoster priority list
+- [x] Hoster priority list
 - [x] Automatically use working hoster
 - [x] Browsing
   - [x] Descriptions
@@ -92,7 +92,7 @@ termux-setup-storage
   - [x] Automatically start next episode
   - [x] Discord Presence **WIP**
   - [MPV] only
-    - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support **Very WIP** (need skip plugin)
+    - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support **Very WIP**
     - [x] [Syncplay](https://github.com/Syncplay/syncplay) support (almost out of WIP)
     - [ ] Remember watch time **WIP**
     - [ ] Remember completed Episodes (and series)
@@ -198,7 +198,6 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
     - [ ] [Anime4k]
   - [ ] [VLC]
 - [ ] Create shortcut Windows & Linux
-- [ ] CLI args
 - [ ] CI Testing (Windows, Linux)
 - [ ] CD pip
 - [ ] [Anime4k] options
@@ -211,10 +210,8 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
 - [ ] Image preview (Kitty protocol, iterm protocol, Sixel, textual-web)
 - [ ] Support textual-web
 - [ ] Blacklist detection & bypass
-- [ ] Syncplay on Android
 - [ ] Mac support
 - [ ] IOS support
-- [ ] Option to disable update checker
 - [ ] Update checker option to perform update
 - [ ] Snap support ?
 - [ ] 404 detection inside Hoster and don't crash whole program on http error + crash reports/logs
@@ -223,24 +220,21 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
 - [ ] Focus window when ask next
 - [ ] next and cancel hotkeys
 - [ ] show hotkeys in Footer
-- [ ] ani-skip load skip plugin from src
-- [ ] ani-skip only to get chapters
 - [ ] Window in settings menu to show where files are located (data, logs, config, downloads)
 - [ ] Utilize next and previous buttons in mpv
 - [ ] Nix
 - [ ] Docker
 - [ ] Flatpack ?
 - [ ] Merge anime's from SerienStream.to to AniWorld.to to get more langs
-- [ ] Fix title
 - [ ] Do unescape and stripe only on render
 - [ ] Dont coppy code from SerienStream.to to AniWorld.to
-- [ ] FIX TYPING SOMETIMES CAUSES CRASH
-- [ ] option to disable debug logging
 - [ ] BIG CODE CLEANUP
-- [ ] Player selection
-- [ ] Hoster prio list
 - [ ] Translation
 - [ ] detect existing chapters and use them for skip
+- [ ] Better settings design
+- [ ] FIX TYPING SOMETIMES CAUSES CRASH
+- [ ] Syncplay on Android
+- [ ] More CLI args
 
 [Anime4k]: https://github.com/bloc97/Anime4K
 [MPV]: https://mpv.io/
