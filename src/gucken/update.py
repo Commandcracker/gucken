@@ -1,9 +1,10 @@
+from dataclasses import dataclass
+from typing import Union
+
 from httpx import AsyncClient
 from packaging.version import Version
-from . import __version__ as current_version
-from typing import Union
-from dataclasses import dataclass
 
+from . import __version__ as current_version
 
 PACKAGE_NAME = "gucken"
 
@@ -29,6 +30,7 @@ async def check() -> Union[UpdateResult, None]:
 
 def main():
     from asyncio import run
+
     print(run(check()))
 
 

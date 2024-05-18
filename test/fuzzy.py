@@ -1,13 +1,15 @@
 import difflib
-from difflib import SequenceMatcher
-from rome import replace_roman_numerals
 import logging
-from textdistance import DamerauLevenshtein
-levenshtein = DamerauLevenshtein()
-from rapidfuzz import process
-import distance
-logging.basicConfig(level=logging.INFO)
+from difflib import SequenceMatcher
 
+from rome import replace_roman_numerals
+from textdistance import DamerauLevenshtein
+
+levenshtein = DamerauLevenshtein()
+import distance
+from rapidfuzz import process
+
+logging.basicConfig(level=logging.INFO)
 
 
 def difflib_search(pattern, possibilities, threshold=0):
@@ -51,7 +53,7 @@ test_list = [
     "junk",
     "over junk",
     "very muxh over junk",
-    "very muxh junk"
+    "very muxh junk",
 ]
 
 nl = []

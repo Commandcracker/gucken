@@ -28,6 +28,6 @@ async def search(keyword: str) -> dict:
         response = await client.post(
             f"https://graphql.anilist.co",
             headers={"Content-Type": "application/json"},
-            json={"query": SEARCH_QUERY, "variables": {"search": keyword}}
+            json={"query": SEARCH_QUERY, "variables": {"search": keyword}},
         )
         return response.json()

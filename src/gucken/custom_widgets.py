@@ -8,8 +8,11 @@ class SortableTable(DataTable):
     TODO: Add mouse support.
     TODO: Improve UX
     """
+
     class SortChanged(Message):
-        def __init__(self, sortable_table: "SortableTable", previous: int, now: int) -> None:
+        def __init__(
+            self, sortable_table: "SortableTable", previous: int, now: int
+        ) -> None:
             self.sortable_table = sortable_table
             self.previous = previous
             self.now = now
@@ -35,7 +38,9 @@ class SortableTable(DataTable):
         i2 = self._row_locations.get_key(now)
         self._row_locations[i1] = now
         self._row_locations[i2] = previous
-        self.cursor_coordinate = self.cursor_coordinate.down() if offset > 0 else self.cursor_coordinate.up()
+        self.cursor_coordinate = (
+            self.cursor_coordinate.down() if offset > 0 else self.cursor_coordinate.up()
+        )
         self._update_count += 1
         self.refresh()
         self.post_message(self.SortChanged(self, previous, now))
