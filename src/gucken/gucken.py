@@ -60,7 +60,7 @@ from .utils import detect_player, is_android
 
 
 def sort_favorite_lang(
-    language_list: List[Language], pio_list: List[str]
+        language_list: List[Language], pio_list: List[str]
 ) -> List[Language]:
     def lang_sort_key(hoster: Language) -> int:
         try:
@@ -72,7 +72,7 @@ def sort_favorite_lang(
 
 
 def sort_favorite_hoster(
-    hoster_list: List[Hoster], pio_list: List[str]
+        hoster_list: List[Hoster], pio_list: List[str]
 ) -> List[Hoster]:
     def hoster_sort_key(_hoster: Hoster) -> int:
         try:
@@ -84,7 +84,7 @@ def sort_favorite_hoster(
 
 
 def sort_favorite_hoster_by_key(
-    hoster_list: List[str], pio_list: List[str]
+        hoster_list: List[str], pio_list: List[str]
 ) -> List[str]:
     def hoster_sort_key(_hoster: str) -> int:
         try:
@@ -346,8 +346,8 @@ class GuckenApp(App):
 
     @on(SortableTable.SortChanged)
     async def sortableTable_sortChanged(
-        self,
-        event: SortableTable.SortChanged
+            self,
+            event: SortableTable.SortChanged
     ):
         id = event.control.id
         if id == "lang":
@@ -419,9 +419,14 @@ class GuckenApp(App):
         for h in self.hoster:
             host.add_row(h)
 
-        input = self.query_one("#input", Input)
-        input.focus()
-        input.value = self._search
+        _input = self.query_one("#input", Input)
+        _input.focus()
+
+        if self._search is not None:
+            def set_search():
+                _input.value = self._search
+
+            self.call_later(set_search)
 
         self.query_one("#info", TabPane).loading = True
 
@@ -590,7 +595,7 @@ class GuckenApp(App):
 
     @work(thread=True)
     async def play(
-        self, series_search_result: SearchResult, episodes: list[Episode], index: int
+            self, series_search_result: SearchResult, episodes: list[Episode], index: int
     ) -> None:
         p = self.query_one("#player", Select).value
         if p == Select.BLANK:
@@ -639,7 +644,6 @@ class GuckenApp(App):
         args = _player.play(direct_link.url, title, fullscreen, direct_link.headers)
 
         if self.RPC and self.RPC.sock_writer:
-
             async def update():
                 await self.RPC.update(
                     # state="00:20:00 / 00:25:00 57% complete",
@@ -718,12 +722,12 @@ class GuckenApp(App):
                     args.pop(0)
                     args.pop(0)
                     args = [
-                        syncplay_path,
-                        "--player-path",
-                        player_path,
-                        url,
-                        "--",
-                    ] + args
+                               syncplay_path,
+                               "--player-path",
+                               player_path,
+                               url,
+                               "--",
+                           ] + args
                 else:
                     self.notify(
                         "Your player is not supported by Syncplay",
