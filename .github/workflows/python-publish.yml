@@ -18,6 +18,8 @@ jobs:
           python-version: 3.x
 
       - name: Install dependencies 🧰
+        env:
+          PIP_ROOT_USER_ACTION: ignore
         run: |
           python -m pip install --upgrade pip
           pip install build
@@ -26,7 +28,7 @@ jobs:
         run: python -m build
 
       - name: Publish package 🚀
-        uses: Commandcracker/pypi-publish@32e78ea691b666534c641470e9d74e4deca05bcc
+        uses: Commandcracker/pypi-publish@8d13f542c4bb425036897e69001b670654c41a8d
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

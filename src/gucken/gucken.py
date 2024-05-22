@@ -2,8 +2,8 @@ import argparse
 import logging
 from asyncio import gather
 from atexit import register as register_atexit
-from os import name as os_name
-from os import remove
+from os import remove, name as os_name
+from os.path import join
 from pathlib import Path
 from random import choice
 from shutil import which
@@ -56,7 +56,7 @@ from .provider.common import Episode, Language, SearchResult, Series
 from .provider.serienstream import SerienStreamProvider
 from .settings import gucken_settings_manager
 from .update import check
-from .utils import detect_player, is_android
+from .utils import detect_player, is_android, set_default_vlc_interface_cfg, get_vlc_intf_user_path
 
 
 def sort_favorite_lang(
@@ -207,7 +207,7 @@ class GuckenApp(App):
     TITLE = "Gucken TUI"
     # TODO: color theme https://textual.textualize.io/guide/design/#designing-with-colors
 
-    CSS_PATH = ["gucken.css"]
+    CSS_PATH = [join("resources", "gucken.css")]
     custom_css = user_config_path("gucken").joinpath("custom.css")
     if custom_css.exists():
         CSS_PATH.append(custom_css)
@@ -312,7 +312,7 @@ class GuckenApp(App):
                                 Select.BLANK if player == "AutomaticPlayer" else player
                             ),
                         )
-                    with Collapsible(title="ani-skip (only for MPV)", collapsed=False):
+                    with Collapsible(title="ani-skip (only for MPV and VLC)", collapsed=False):
                         yield RadioButton(
                             "Skip opening",
                             id="ani_skip_opening",
@@ -324,7 +324,7 @@ class GuckenApp(App):
                             value=settings["ani_skip"]["skip_ending"],
                         )
                         yield RadioButton(
-                            "Get chapters",
+                            "Get chapters (only MPV)",
                             id="ani_skip_chapters",
                             value=settings["ani_skip"]["chapters"],
                         )
@@ -460,7 +460,8 @@ class GuckenApp(App):
             self.RPC = None
 
     # TODO: https://textual.textualize.io/guide/workers/#thread-workers
-    @work(exclusive=True)
+    # TODO: Exit on error when debug = true
+    @work(exclusive=True, exit_on_error=False)
     async def lookup_anime(self, keyword: str) -> None:
         search_providers = []
         if self.query_one("#aniworld_to", Checkbox).value:
@@ -659,12 +660,21 @@ class GuckenApp(App):
 
             self.app.call_later(update)
 
+        if self._debug:
+            logs_path = user_log_path("gucken", ensure_exists=True)
+            if isinstance(_player, MPVPlayer):
+                args.append("--log-file=" + str(logs_path.joinpath("mpv.log")))
+            elif isinstance(_player, VLCPlayer):
+                args.append("--file-logging")
+                args.append("--log-verbose=3")
+                args.append("--logfile=" + str(logs_path.joinpath("vlc.log")))
+
         chapters_file = None
 
         # TODO: cache more
         # TODO: Support based on mpv
         # TODO: recover start --start=00:56
-        if isinstance(_player, MPVPlayer):
+        if isinstance(_player, MPVPlayer) or isinstance(_player, VLCPlayer):
             ani_skip_opening = self.query_one("#ani_skip_opening", RadioButton).value
             ani_skip_ending = self.query_one("#ani_skip_ending", RadioButton).value
             ani_skip_chapters = self.query_one("#ani_skip_chapters", RadioButton).value
@@ -674,29 +684,65 @@ class GuckenApp(App):
                     series_search_result.name, index + 1
                 )
                 if timings:
-                    if ani_skip_chapters:
-                        chapters_file = generate_chapters_file(timings)
+                    if isinstance(_player, MPVPlayer):
+                        if ani_skip_chapters:
+                            chapters_file = generate_chapters_file(timings)
 
-                        def delete_chapters_file():
-                            try:
-                                remove(chapters_file.name)
-                            except FileNotFoundError:
-                                pass
+                            def delete_chapters_file():
+                                try:
+                                    remove(chapters_file.name)
+                                except FileNotFoundError:
+                                    pass
 
-                        register_atexit(delete_chapters_file)
+                            register_atexit(delete_chapters_file)
 
-                        args.append(get_chapters_file_mpv_option(chapters_file.name))
+                            args.append(get_chapters_file_mpv_option(chapters_file.name))
 
-                    if ani_skip_opening:
-                        args.append(opening_timings_to_mpv_option(timings))
+                        if ani_skip_opening:
+                            args.append(opening_timings_to_mpv_option(timings))
 
-                    if ani_skip_ending:
-                        args.append(ending_timings_to_mpv_option(timings))
+                        if ani_skip_ending:
+                            args.append(ending_timings_to_mpv_option(timings))
 
-                    args.append("--script=" + str(Path(__file__).parent.joinpath("skip.lua")))
-                    if self._debug:
-                        logs_path = user_log_path("gucken", ensure_exists=True)
-                        args.append("--log-file=" + str(logs_path.joinpath("mpv.log")))
+                        args.append("--script=" + str(Path(__file__).parent.joinpath("resources", "mpv_skip.lua")))
+
+                    if isinstance(_player, VLCPlayer):
+                        # cant use --lua-config because it would override syncplay cfg
+                        # cant use --extraintf and --lua-intf because it is already used by syncplay
+                        """
+                            args = [
+                                "vlc",
+                                "--extraintf=luaintf",
+                                "--lua-intf=skip",
+                                "--lua-config=skip={" + f"op_start={op_start},op_end={op_end},ed_start={ed_start},ed_end={ed_end}" +"}",
+                                url
+                            ]
+                        """
+                        prepend_data = ["-- Generated"]
+
+                        if ani_skip_opening:
+                            prepend_data.append(set_default_vlc_interface_cfg("op_start", timings["op_start_time"]))
+                            prepend_data.append(set_default_vlc_interface_cfg("op_end", timings["op_end_time"]))
+
+                        if ani_skip_ending:
+                            prepend_data.append(set_default_vlc_interface_cfg("ed_start", timings["ed_start_time"]))
+                            prepend_data.append(set_default_vlc_interface_cfg("ed_end", timings["ed_end_time"]))
+
+                        prepend_data.append("-- Generated\n")
+
+                        vlc_intf_user_path = get_vlc_intf_user_path(_player.executable).vlc_intf_user_path
+                        Path(vlc_intf_user_path).mkdir(mode=0o755, parents=True, exist_ok=True)
+
+                        vlc_skip_plugin = Path(__file__).parent.joinpath("resources", "vlc_skip.lua")
+                        copyTo = join(vlc_intf_user_path, "vlc_skip.lua")
+
+                        with open(vlc_skip_plugin, 'r') as f:
+                            original_content = f.read()
+
+                        with open(copyTo, 'w') as f:
+                            f.write("\n".join(prepend_data) + original_content)
+
+                        args.append("--control=luaintf{intf=vlc_skip}")
 
         if syncplay:
             # TODO: make work with flatpak
@@ -746,7 +792,7 @@ class GuckenApp(App):
 
             resume_time = None
 
-            # only if mpv
+            # only if mpv WIP
             while not self.app._exit:
                 output = process.stderr.readline()
                 if process.poll() is not None:

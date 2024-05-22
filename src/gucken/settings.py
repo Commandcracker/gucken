@@ -79,6 +79,6 @@ class GuckenSettingsManager(Singleton, SettingsManager):
 
 
 gucken_settings_manager = GuckenSettingsManager(
-    default_settings_file=Path(__file__).parent.joinpath("default_settings.toml"),
+    default_settings_file=Path(__file__).parent.joinpath("resources", "default_settings.toml"),
     settings_file=user_config_path("gucken").joinpath("settings.toml"),
 )

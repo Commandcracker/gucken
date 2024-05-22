@@ -235,6 +235,8 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
 - [ ] FIX TYPING SOMETIMES CAUSES CRASH
 - [ ] Syncplay on Android
 - [ ] More CLI args
+- [ ] reverse proxy
+- [ ] Chapters for VLC
 
 [Anime4k]: https://github.com/bloc97/Anime4K
 [MPV]: https://mpv.io/
