@@ -212,7 +212,7 @@ class GuckenApp(App):
     if custom_css.exists():
         CSS_PATH.append(custom_css)
     BINDINGS: ClassVar[list[BindingType]] = [
-        Binding("q", "quit", "Quit", show=True, priority=False),
+        Binding("q", "quit", "Quit", show=False, priority=False),
     ]
 
     def __init__(self, debug: bool, search: str):
@@ -328,9 +328,9 @@ class GuckenApp(App):
                             id="ani_skip_chapters",
                             value=settings["ani_skip"]["chapters"],
                         )
-        with Footer():
-            with Center():
-                yield Label("Made by Commandcracker with [red]:heart:[/red]")
+        # yield Footer()
+        with Center(id="footer"):
+            yield Label("Made by Commandcracker with [red]:heart:[/red]")
 
     @on(Input.Changed)
     async def input_changed(self, event: Input.Changed):

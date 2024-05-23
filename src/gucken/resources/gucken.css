@@ -60,4 +60,11 @@ ClickableListItem {
     padding-right: -2;
 }
 
+#footer {
+    background: $accent;
+    color: $text;
+    dock: bottom;
+    height: 1;
+}
+
 /*$accent: lime;*/
