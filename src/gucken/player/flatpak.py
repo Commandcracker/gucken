@@ -6,11 +6,9 @@ from .mpv import CelluloidPlayer, MPVPlayer
 from .vlc import VLCPlayer
 
 
-# This is just that you can check if the player is a flatpak player
+# This is just that you can check if the player is a Flatpak player
 class FlatpakPlayer(Player):
-    @staticmethod
-    def detect_executable() -> str:
-        pass
+    pass
 
 
 # TODO: Dont use Popen, it will slow down

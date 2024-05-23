@@ -23,7 +23,7 @@ class Player:
     @staticmethod
     @abstractmethod
     def detect_executable() -> str:
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def play(

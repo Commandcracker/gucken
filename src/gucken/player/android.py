@@ -1,7 +1,12 @@
 from .common import Player
 
 
-class AndroidChoosePlayer(Player):
+# This is just that you can check if the player is an Android player
+class AndroidPlayer(Player):
+    pass
+
+
+class AndroidChoosePlayer(AndroidPlayer):
     def play(
         self,
         url: str,
@@ -24,7 +29,7 @@ class AndroidChoosePlayer(Player):
 
 
 # http://mpv-android.github.io/mpv-android/intent.html
-class AndroidMPVPlayer(Player):
+class AndroidMPVPlayer(AndroidPlayer):
     def play(
         self,
         url: str,
@@ -47,7 +52,7 @@ class AndroidMPVPlayer(Player):
 
 
 # https://wiki.videolan.org/Android_Player_Intents/
-class AndroidVLCPlayer(Player):
+class AndroidVLCPlayer(AndroidPlayer):
     def play(
         self,
         url: str,
