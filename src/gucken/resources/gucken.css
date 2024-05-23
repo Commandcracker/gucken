@@ -56,8 +56,8 @@ TabbedContent #--content-tab-setting {
 
 ClickableListItem {
     padding-bottom: -1;
-    padding-left: -2;
-    padding-right: -2;
+    padding-left: -1;
+    padding-right: -1;
 }
 
 #footer {
