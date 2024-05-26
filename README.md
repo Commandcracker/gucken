@@ -90,9 +90,9 @@ termux-setup-storage
   - [x] Descriptions
 - [x] Watching
   - [x] Automatically start next episode
-  - [x] Discord Presence **WIP**
+  - [x] Discord Presence **Very WIP**
   - [MPV] only
-    - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support **Very WIP**
+    - [X] [ani-skip](https://github.com/synacktraa/ani-skip) support
     - [x] [Syncplay](https://github.com/Syncplay/syncplay) support (almost out of WIP)
     - [ ] Remember watch time **WIP**
     - [ ] Remember completed Episodes (and series)
@@ -205,7 +205,6 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
 - [ ] Proper error handling
 - [ ] Logging and Crash reports
 - [ ] Pre-fetching
-- [ ] improve [ani-skip](https://github.com/synacktraa/ani-skip) support
 - [ ] Use something like opencv to time match a sub from aniworld with a high quality video form another site.
 - [ ] Image preview (Kitty protocol, iterm protocol, Sixel, textual-web)
 - [ ] Support textual-web

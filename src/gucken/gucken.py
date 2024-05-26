@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings('ignore', message='Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+
 import argparse
 import logging
 from asyncio import gather
@@ -25,7 +28,6 @@ from textual.widgets import (
     Checkbox,
     Collapsible,
     DataTable,
-    Footer,
     Header,
     Input,
     Label,
@@ -40,10 +42,7 @@ from textual.widgets import (
 
 from .aniskip import (
     generate_chapters_file,
-    get_chapters_file_mpv_option,
-    get_timings_from_search,
-    opening_timings_to_mpv_option,
-    ending_timings_to_mpv_option
+    get_timings_from_search
 )
 from .custom_widgets import SortableTable
 from .hoster._hosters import hoster
@@ -481,6 +480,7 @@ class GuckenApp(App):
                     final_results.append(e)
 
         # TODO: Sort final_results with fuzzy-sort
+        # from fuzzywuzzy import process process.extract()
         if len(final_results) > 0:
             self.current = final_results
             for series in final_results:
@@ -681,7 +681,7 @@ class GuckenApp(App):
 
             if ani_skip_opening or ani_skip_ending or ani_skip_chapters:
                 timings = await get_timings_from_search(
-                    series_search_result.name, index + 1
+                    series_search_result.name + " " + str(episode.season), episode.episode_number
                 )
                 if timings:
                     if isinstance(_player, MPVPlayer):
@@ -695,54 +695,42 @@ class GuckenApp(App):
                                     pass
 
                             register_atexit(delete_chapters_file)
+                            args.append(f"--chapters-file={chapters_file.name}")
 
-                            args.append(get_chapters_file_mpv_option(chapters_file.name))
-
+                        script_opts = []
                         if ani_skip_opening:
-                            args.append(opening_timings_to_mpv_option(timings))
-
+                            script_opts.append(f"skip-op_start={timings.op_start}")
+                            script_opts.append(f"skip-op_end={timings.op_end}")
                         if ani_skip_ending:
-                            args.append(ending_timings_to_mpv_option(timings))
+                            script_opts.append(f"skip-ed_start={timings.ed_start}")
+                            script_opts.append(f"skip-ed_end={timings.ed_end}")
+                        if len(script_opts) > 0:
+                            args.append(f"--script-opts={','.join(script_opts)}")
 
-                        args.append("--script=" + str(Path(__file__).parent.joinpath("resources", "mpv_skip.lua")))
+                        args.append("--scripts-append=" + str(Path(__file__).parent.joinpath("resources", "mpv_gucken.lua")))
 
                     if isinstance(_player, VLCPlayer):
-                        # cant use --lua-config because it would override syncplay cfg
-                        # cant use --extraintf and --lua-intf because it is already used by syncplay
-                        """
-                            args = [
-                                "vlc",
-                                "--extraintf=luaintf",
-                                "--lua-intf=skip",
-                                "--lua-config=skip={" + f"op_start={op_start},op_end={op_end},ed_start={ed_start},ed_end={ed_end}" +"}",
-                                url
-                            ]
-                        """
-                        prepend_data = ["-- Generated"]
-
+                        prepend_data = []
                         if ani_skip_opening:
-                            prepend_data.append(set_default_vlc_interface_cfg("op_start", timings["op_start_time"]))
-                            prepend_data.append(set_default_vlc_interface_cfg("op_end", timings["op_end_time"]))
-
+                            prepend_data.append(set_default_vlc_interface_cfg("op_start", timings.op_start))
+                            prepend_data.append(set_default_vlc_interface_cfg("op_end", timings.op_end))
                         if ani_skip_ending:
-                            prepend_data.append(set_default_vlc_interface_cfg("ed_start", timings["ed_start_time"]))
-                            prepend_data.append(set_default_vlc_interface_cfg("ed_end", timings["ed_end_time"]))
-
-                        prepend_data.append("-- Generated\n")
+                            prepend_data.append(set_default_vlc_interface_cfg("ed_start", timings.ed_start))
+                            prepend_data.append(set_default_vlc_interface_cfg("ed_end", timings.ed_end))
 
                         vlc_intf_user_path = get_vlc_intf_user_path(_player.executable).vlc_intf_user_path
                         Path(vlc_intf_user_path).mkdir(mode=0o755, parents=True, exist_ok=True)
 
-                        vlc_skip_plugin = Path(__file__).parent.joinpath("resources", "vlc_skip.lua")
-                        copyTo = join(vlc_intf_user_path, "vlc_skip.lua")
+                        vlc_skip_plugin = Path(__file__).parent.joinpath("resources", "vlc_gucken.lua")
+                        copy_to = join(vlc_intf_user_path, "vlc_gucken.lua")
 
                         with open(vlc_skip_plugin, 'r') as f:
                             original_content = f.read()
 
-                        with open(copyTo, 'w') as f:
+                        with open(copy_to, 'w') as f:
                             f.write("\n".join(prepend_data) + original_content)
 
-                        args.append("--control=luaintf{intf=vlc_skip}")
+                        args.append("--control=luaintf{intf=vlc_gucken}")
 
         if syncplay:
             # TODO: make work with flatpak
@@ -771,6 +759,7 @@ class GuckenApp(App):
                                syncplay_path,
                                "--player-path",
                                player_path,
+                               # "--debug",
                                url,
                                "--",
                            ] + args

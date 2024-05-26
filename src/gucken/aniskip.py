@@ -1,114 +1,85 @@
-from difflib import SequenceMatcher
 from tempfile import NamedTemporaryFile
 from typing import Union
+from dataclasses import dataclass
 
+from fuzzywuzzy import process
 from httpx import AsyncClient
 
 from .tracker.myanimelist import search
-
-# TODO: improve fuzzy
-
-
-def fuzzy_search(pattern, possibilities, threshold=0.6):
-    matches = []
-    for word in possibilities:
-        ratio = SequenceMatcher(None, pattern, word).ratio()
-        if ratio >= threshold:
-            matches.append((word, ratio))
-    return matches
+from .rome import replace_roman_numerals
 
 
-def fuzzy_sort(pattern, possibilities):
-    return sorted(
-        possibilities,
-        key=lambda x: SequenceMatcher(None, pattern, x).ratio(),
-        reverse=True,
-    )
+@dataclass
+class SkipTimes:
+    op_start: float
+    op_end: float
+    ed_start: float
+    ed_end: float
 
 
 async def get_timings_from_id(
     anime_id: int, episode_number: int
-) -> Union[dict[str, float], None]:
-    async with AsyncClient(verify=False) as client:
+) -> Union[SkipTimes, None]:
+    async with (AsyncClient(verify=False) as client):
         response = await client.get(
             f"https://api.aniskip.com/v1/skip-times/{anime_id}/{episode_number}?types=op&types=ed"
         )
         json = response.json()
         if json.get("found") is not True:
-            return None
-        op_start_time = 0
-        op_end_time = 0
-        ed_start_time = 0
-        ed_end_time = 0
+            return
+        op_start = 0
+        op_end = 0
+        ed_start = 0
+        ed_end = 0
         for result in json["results"]:
             skip_type = result["skip_type"]
             start_time = result["interval"]["start_time"]
             end_time = result["interval"]["end_time"]
             if skip_type == "op":
-                op_start_time = start_time
-                op_end_time = end_time
+                op_start = start_time
+                op_end = end_time
             if skip_type == "ed":
-                ed_start_time = start_time
-                ed_end_time = end_time
-        return {
-            "op_start_time": float(op_start_time),
-            "op_end_time": float(op_end_time),
-            "ed_start_time": float(ed_start_time),
-            "ed_end_time": float(ed_end_time),
-        }
+                ed_start = start_time
+                ed_end = end_time
+        return SkipTimes(
+            op_start=float(op_start),
+            op_end=float(op_end),
+            ed_start=float(ed_start),
+            ed_end=float(ed_end)
+        )
 
 
 async def get_timings_from_search(
     keyword: str, episode_number: int
-) -> Union[dict[str, float], None]:
-    # TODO: improve search
+) -> Union[SkipTimes, None]:
     myanimelist_search_result = await search(keyword)
     animes = {}
     for anime in myanimelist_search_result["categories"][0]["items"]:
-        animes[anime["name"]] = anime["id"]
-    search_results = fuzzy_search(keyword, animes)
-    if len(search_results) > 0:
-        name = search_results[0][0]
-        anime_id = animes[name]
+        animes[anime["id"]] = replace_roman_numerals(anime["name"])
+    search_result = process.extractOne(replace_roman_numerals(keyword), animes, score_cutoff=50)
+    if search_result is not None:
+        anime_id = search_result[2]
         return await get_timings_from_id(anime_id, episode_number)
     return None
-
-
-def opening_timings_to_mpv_option(timings=dict[str, float]) -> str:
-    op_start_time = timings["op_start_time"]
-    op_end_time = timings["op_end_time"]
-    return f"--script-opts-add=skip-op_start={op_start_time},skip-op_end={op_end_time}"
-
-
-def ending_timings_to_mpv_option(timings=dict[str, float]) -> str:
-    ed_start_time = timings["ed_start_time"]
-    ed_end_time = timings["ed_end_time"]
-    return f"--script-opts-add=skip-ed_start={ed_start_time},skip-ed_end={ed_end_time}"
 
 
 def chapter(start: float, end: float, title: str) -> str:
     return f"\n[CHAPTER]\nTIMEBASE=1/1000\nSTART={int(start * 1000)}\nEND={int(end * 1000)}\nTITLE={title}\n"
 
 
-def get_chapters_file_content(timings=dict[str, float]) -> str:
-    op_start_time = timings["op_start_time"]
-    op_end_time = timings["op_end_time"]
-    ed_start_time = timings["ed_start_time"]
-    ed_end_time = timings["ed_end_time"]
-    return (
-        ";FFMETADATA1"
-        + chapter(op_start_time, op_end_time, "Opening")
-        + chapter(ed_start_time, ed_end_time, "Ending")
-        + chapter(op_end_time, ed_start_time, "Episode")
-    )
+def get_chapters_file_content(timings: SkipTimes) -> str:
+    string_builder = [";FFMETADATA1"]
+    if timings.op_start != timings.op_end:
+        string_builder.append(chapter(timings.op_start, timings.op_end, "Opening"))
+    if timings.ed_start != timings.ed_end:
+        string_builder.append(chapter(timings.ed_start, timings.ed_end, "Ending"))
+    if timings.op_end != 0 and timings.ed_start != 0:
+        string_builder.append(chapter(timings.op_end, timings.ed_start, "Episode"))
+    return "".join(string_builder)
 
 
-def generate_chapters_file(timings=dict[str, float]) -> NamedTemporaryFile:
+def generate_chapters_file(timings: SkipTimes) -> NamedTemporaryFile:
     temp_file = NamedTemporaryFile(mode="w", prefix="gucken-", delete=False)
     temp_file.write(get_chapters_file_content(timings))
     temp_file.close()
     return temp_file
-
-
-def get_chapters_file_mpv_option(path: str) -> str:
-    return f"--chapters-file={path}"

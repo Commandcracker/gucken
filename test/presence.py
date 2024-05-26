@@ -17,6 +17,9 @@ RPC.update(
     # small_image as playing or stopped ?
     small_image="https://jooinn.com/images/lonely-tree-reflection-3.jpg",
     small_text="ff 15",
+    join="R2hlbGw=",
+    party_id="idk",
+    party_size=[1, 2]
     # start=time.time(), # for paused
     # end=time.time() + timedelta(minutes=20).seconds   # for time left
 )  # Updates our presence

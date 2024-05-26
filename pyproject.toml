@@ -7,13 +7,15 @@ maintainers = [{name="Commandcracker"}]
 license = {file = "LICENSE.txt"}
 readme = "README.md"
 dependencies = [
-  "textual>=0.62.0",
+  "textual>=0.63.3",
   "beautifulsoup4>=4.12.3",
   "httpx>=0.27.0",
   "pypresence>=4.3.0",
   "packaging>=24.0",
   "platformdirs>=4.2.2",
-  "toml>=0.10.2"
+  "toml>=0.10.2",
+  "fuzzywuzzy>=0.18.0",
+  "levenshtein>=0.25.1"
   #"yt-dlp>=2024.4.9",
   #"mpv>=1.0.6",
   #"httpx[socks]",

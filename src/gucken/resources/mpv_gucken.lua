@@ -2,7 +2,7 @@ local mpv_utils = require("mp.utils")
 
 -- Stop script if skip.lua is inside scripts folder
 local scripts_dir = mp.find_config_file("scripts")
-if mpv_utils.file_info(mpv_utils.join_path(scripts_dir, "skip.lua")) ~= nil then
+if scripts_dir ~= nil and mpv_utils.file_info(mpv_utils.join_path(scripts_dir, "skip.lua")) ~= nil then
 	mp.msg.info("Disabling, another skip.lua is already present in scripts dir")
 	return
 end
