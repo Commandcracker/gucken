@@ -14,11 +14,9 @@ dependencies = [
   "packaging>=24.0",
   "platformdirs>=4.2.2",
   "toml>=0.10.2",
-  "fuzzywuzzy>=0.18.0",
-  "levenshtein>=0.25.1"
+  "fuzzywuzzy>=0.18.0"
   #"yt-dlp>=2024.4.9",
   #"mpv>=1.0.6",
-  #"httpx[socks]",
 ]
 keywords = [
   "gucken",
@@ -47,6 +45,10 @@ classifiers = [
   #"Operating System :: MacOS",
   #"Operating System :: iOS",
 ]
+
+[project.optional-dependencies]
+levenshtein = ["levenshtein>=0.25.1"]
+socks = ["httpx[socks]>=0.27.0"]
 
 [project.urls]
 Repository = "https://github.com/Commandcracker/gucken"

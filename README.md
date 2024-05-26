@@ -156,6 +156,11 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
 - [Textual CSS Guide](https://textual.textualize.io/guide/CSS/)
 - [Textual CSS Reference](https://textual.textualize.io/css_types/)
 
+## Optional dependencies
+
+- `levenshtein` - Faster fuzzy sort/search. (with: `gucken[levenshtein]`)
+- `socks` - SOCKS proxy support. (with: `gucken[socks]`)
+
 ## Todo
 
 - [ ] Up-scaling (after download)
