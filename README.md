@@ -164,88 +164,111 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
 
 ## Todo
 
+### Privacy
+
+- [ ] Proxy support
+```
+Proxies can easiely be implented
+
+for the http client in python
+AsyncClient(proxy="http://...")
+  
+for the player mpv Note: mpv dos not support socks5
+--http-proxy=<proxy>
+FFmpeg: env.http_proxy
+ytdl: --ytdl-raw-options=proxy=
+  
+yt-dlp
+--proxy URL
+```
+- [ ] [Tor](https://www.torproject.org/) as proxy
+```
+AniWorld.to need Cloudflare captcha and JS challange
+SerienStream.to can be bypassed by using diract ip
+  
+Cloudflare captcha and JS challange can be solved by using something like
+selenium or playwright
+```
+- [ ] DoH support
+- [ ] Reverse proxy for player
+  - [ ] DoH
+  - [ ] proxy
+
+### UX
+
+- [ ] Translation DE, EN
+- [ ] Improve settings design
+- [ ] Merge SerienStream.to and AniWorld.to search results
+- [ ] Focus window on autoplay popup
+- [ ] Utilize next and previous buttons in mpv
+- [ ] Chapters for VLC
+- [ ] Window in settings menu to show where files are located (data, logs, config, downloads)
+- [ ] s.to, aniworld.to scrape episode description
+- [ ] Search in episodes
+- [ ] Next and Cancel hotkeys
+- [ ] Show hotkeys in Footer
+- [ ] Create shortcut Windows & Linux
+- [ ] Installation helper
+  - [ ] [MPV]
+    - [ ] [Anime4k]
+  - [ ] [VLC]
+- [ ] Colors themes
+
+### Speedups
+
+- [ ] Pre-fetching
+- [ ] Caching
+- [ ] More threads and asyncio.gather to make everything faster
+
+### Code
+
+- [ ] Do unescape and stripe only on render
+- [ ] Dont coppy code from SerienStream.to to AniWorld.to
+- [ ] BIG CODE CLEANUP
+
+### Features
+
+- [ ] Update checker option to perform update
+- [ ] Watchlist
+- [ ] New anime/series Notifications
+- [ ] Image preview (Kitty protocol, iterm protocol, Sixel, textual-web)
+- [ ] Use something like opencv to time match a sub from aniworld with a high quality video form another site.
+- [ ] Nix package
+- [ ] Docker image
+- [ ] Flatpack package
+- [ ] Detect existing chapters and use them for skip
+- [ ] Reverse proxy for players that do not support headers
 - [ ] Up-scaling (after download)
   - [ ] [video2x](https://github.com/k4yt3x/video2x)
   - [ ] [waifu2x](https://github.com/nagadomi/waifu2x)
   - [ ] [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
   - [ ] [FSRCNN](https://github.com/igv/FSRCNN-TensorFlow)
   - [ ] [Anime4k]
-- [ ] Proxy support
-  ```
-  Note:
-  Proxies can easiely be implented
-  
-  for the http client in python
-  AsyncClient(proxy="http://...")
-  
-  for the player mpv Note: mpv dos not support socks5
-  --http-proxy=<proxy>
-    FFmpeg: env.http_proxy
-    ytdl: --ytdl-raw-options=proxy=
-  
-  yt-dlp
-  --proxy URL
-  ```
-  - [ ] [Tor](https://www.torproject.org/) as proxy
-  ```
-  Note:
-  AniWorld.to need Cloudflare captcha and JS challange
-  SerienStream.to can be bypassed by using diract ip
-  
-  Cloudflare captcha and JS challange can be solved by using something like
-  selenium or playwright
-  ```
+- [ ] Modular (Custom extractors/players, open API)
+- [ ] More CLI args
 - [ ] [MPV] Screen selection
 - [ ] Custom player args
 - [ ] Custom player
-- [ ] Colors themes
-- [ ] Installation helper
-  - [ ] [MPV]
-    - [ ] [Anime4k]
-  - [ ] [VLC]
-- [ ] Create shortcut Windows & Linux
-- [ ] CI Testing (Windows, Linux)
-- [ ] CD pip
 - [ ] [Anime4k] options
-- [ ] Modular (Custom extractors/players, API)
-- [ ] Proper error handling
-- [ ] Logging and Crash reports
-- [ ] Pre-fetching
-- [ ] Use something like opencv to time match a sub from aniworld with a high quality video form another site.
-- [ ] Image preview (Kitty protocol, iterm protocol, Sixel, textual-web)
-- [ ] Support textual-web
-- [ ] Blacklist detection & bypass
+
+#### Support
+
 - [ ] Mac support
 - [ ] IOS support
-- [ ] Update checker option to perform update
-- [ ] Snap support ?
-- [ ] 404 detection inside Hoster and don't crash whole program on http error + crash reports/logs
-- [ ] s.to, aniworld.to scrape episode description
-- [ ] search in episodes
-- [ ] Focus window when ask next
-- [ ] next and cancel hotkeys
-- [ ] show hotkeys in Footer
-- [ ] Window in settings menu to show where files are located (data, logs, config, downloads)
-- [ ] Utilize next and previous buttons in mpv
-- [ ] Nix
-- [ ] Docker
-- [ ] Flatpack ?
-- [ ] Merge anime's from SerienStream.to to AniWorld.to to get more langs
-- [ ] Do unescape and stripe only on render
-- [ ] Dont coppy code from SerienStream.to to AniWorld.to
-- [ ] BIG CODE CLEANUP
-- [ ] Translation
-- [ ] detect existing chapters and use them for skip
-- [ ] Better settings design
-- [ ] FIX TYPING SOMETIMES CAUSES CRASH
+- [ ] Support textual-web
 - [ ] Syncplay on Android
-- [ ] More CLI args
-- [ ] reverse proxy
-- [ ] Chapters for VLC
-- [ ] DoH support
-- [ ] More threads and asyncio.gather to make everything faster
-- [ ] Watchlist
-- [ ] Notifications
+- [ ] Improve Flatpack support
+- [ ] Improve Snap support
+
+### Bugs & DX
+
+- [ ] FIX TYPING SOMETIMES CAUSES CRASH
+- [ ] Proper error handling
+- [ ] Logging and Crash reports
+- [ ] Blacklist detection & bypass
+- [ ] 404 detection inside Hoster and don't crash whole program on http error + crash reports/logs
+- [ ] CI Testing (Windows, Linux)
+- [ ] Automatic git tags
 
 [Anime4k]: https://github.com/bloc97/Anime4K
 [MPV]: https://mpv.io/

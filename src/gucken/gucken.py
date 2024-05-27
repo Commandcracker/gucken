@@ -615,7 +615,7 @@ class GuckenApp(App):
             )
             return
 
-        if p != Select.BLANK:
+        if p != "AutomaticPlayer":
             if not _player.is_available():
                 self.notify(
                     "Your configured player has not been found!",
