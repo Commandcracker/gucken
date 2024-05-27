@@ -53,6 +53,7 @@ class SearchResult:
     name: str
     description: str = None
     cover: str = None
+    provider_name: str = None
 
     @abstractmethod
     async def get_series(self) -> Series:

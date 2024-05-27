@@ -96,14 +96,18 @@ class SerienStreamSeries(Series):
     tags: set[str]
 
     def to_markdown(self) -> str:
-        return (
-            f"# {self.name} {self.production_year}\n{self.full_description}\n\n"
-            f"**Regisseure**: {', '.join(self.regisseure)}\\\n"
-            f"**Schauspieler**: {', '.join(self.schauspieler)}\\\n"
-            f"**Produzent**: {', '.join(self.produzent)}\\\n"
-            f"**Land**: {', '.join(self.land)}\\\n"
-            f"**Tags**: {', '.join(self.tags)}"
-        )
+        string_builder = [f"# {self.name} {self.production_year}\n{self.full_description}\n\n"]
+        if len(self.regisseure) > 0:
+            string_builder.append(f"**Regisseure**: {', '.join(self.regisseure)}\\\n")
+        if len(self.schauspieler) > 0:
+            string_builder.append(f"**Schauspieler**: {', '.join(self.schauspieler)}\\\n")
+        if len(self.produzent) > 0:
+            string_builder.append(f"**Produzent**: {', '.join(self.produzent)}\\\n")
+        if len(self.land) > 0:
+            string_builder.append(f"**Land**: {', '.join(self.land)}\\\n")
+        if len(self.tags) > 0:
+            string_builder.append(f"**Tags**: {', '.join(self.tags)}")
+        return "".join(string_builder)
 
 
 @dataclass
@@ -137,6 +141,7 @@ class SerienStreamProvider(Provider):
             for series in results:
                 search_results.append(
                     SerienStreamSearchResult(
+                        provider_name="serienstream.to",
                         name=unescape(series.get("name")).strip(),
                         link=series.get("link"),
                         description=unescape(series.get("description")),

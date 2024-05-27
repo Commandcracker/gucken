@@ -14,6 +14,7 @@ from subprocess import DEVNULL, PIPE, Popen
 from time import sleep, time
 from typing import ClassVar, List, Union
 
+from fuzzywuzzy import fuzz
 from platformdirs import user_config_path, user_log_path
 from pypresence import AioPresence, DiscordNotFound
 from rich.markup import escape
@@ -479,19 +480,21 @@ class GuckenApp(App):
                 for e in l:
                     final_results.append(e)
 
-        # TODO: Sort final_results with fuzzy-sort
-        # from fuzzywuzzy import process process.extract()
+        def fuzzy_sort_key(result):
+            return fuzz.ratio(keyword, result.name)
+
+        final_results = sorted(final_results, key=fuzzy_sort_key, reverse=True)
         if len(final_results) > 0:
             self.current = final_results
+            items = []
             for series in final_results:
-                # TODO: show provider
-                await results_list_view.append(
-                    ClickableListItem(
+                items.append(ClickableListItem(
                         Markdown(
-                            f"##### {series.name} {series.production_year}\n{series.description}"
+                            f"##### {series.name} {series.production_year} [{series.provider_name}]"
+                            f"\n{series.description}"
                         )
-                    )
-                )
+                    ))
+            await results_list_view.extend(items)
         results_list_view.loading = False
         if len(final_results) > 0:
 
@@ -598,7 +601,7 @@ class GuckenApp(App):
     async def play(
             self, series_search_result: SearchResult, episodes: list[Episode], index: int
     ) -> None:
-        p = self.query_one("#player", Select).value
+        p = gucken_settings_manager.settings["settings"]["player"]["player"]
         if p == Select.BLANK:
             _player = self.detected_player
         else:
@@ -637,9 +640,8 @@ class GuckenApp(App):
         direct_link = await get_working_direct_link(sorted_hoster)
 
         # TODO: check for header support
-        # TODO: pass ani_skip as script
-        syncplay = self.query_one("#syncplay", RadioButton).value
-        fullscreen = self.query_one("#fullscreen", RadioButton).value
+        syncplay = gucken_settings_manager.settings["settings"]["syncplay"]
+        fullscreen = gucken_settings_manager.settings["settings"]["fullscreen"]
 
         title = f"{series_search_result.name} S{episode.season}E{episode.episode_number} - {episode.title}"
         args = _player.play(direct_link.url, title, fullscreen, direct_link.headers)
@@ -675,9 +677,9 @@ class GuckenApp(App):
         # TODO: Support based on mpv
         # TODO: recover start --start=00:56
         if isinstance(_player, MPVPlayer) or isinstance(_player, VLCPlayer):
-            ani_skip_opening = self.query_one("#ani_skip_opening", RadioButton).value
-            ani_skip_ending = self.query_one("#ani_skip_ending", RadioButton).value
-            ani_skip_chapters = self.query_one("#ani_skip_chapters", RadioButton).value
+            ani_skip_opening = gucken_settings_manager.settings["settings"]["ani_skip"]["skip_opening"]
+            ani_skip_ending = gucken_settings_manager.settings["settings"]["ani_skip"]["skip_ending"]
+            ani_skip_chapters = gucken_settings_manager.settings["settings"]["ani_skip"]["chapters"]
 
             if ani_skip_opening or ani_skip_ending or ani_skip_chapters:
                 timings = await get_timings_from_search(
@@ -821,7 +823,7 @@ class GuckenApp(App):
                         callback=play_next,
                     )
 
-                autoplay = self.query_one("#autoplay", RadioButton).value
+                autoplay = gucken_settings_manager.settings["settings"]["autoplay"]["enabled"]
                 if not len(episodes) <= index + 1:
                     if autoplay is True:
                         self.app.call_later(push_next_screen)

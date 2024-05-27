@@ -89,6 +89,7 @@ termux-setup-storage
 - [x] Browsing
   - [x] Descriptions
 - [x] Watching
+  - [ ] Trailer
   - [x] Automatically start next episode
   - [x] Discord Presence **Very WIP**
   - [MPV] only
@@ -241,6 +242,10 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
 - [ ] More CLI args
 - [ ] reverse proxy
 - [ ] Chapters for VLC
+- [ ] DoH support
+- [ ] More threads and asyncio.gather to make everything faster
+- [ ] Watchlist
+- [ ] Notifications
 
 [Anime4k]: https://github.com/bloc97/Anime4K
 [MPV]: https://mpv.io/
