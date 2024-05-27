@@ -602,7 +602,7 @@ class GuckenApp(App):
             self, series_search_result: SearchResult, episodes: list[Episode], index: int
     ) -> None:
         p = gucken_settings_manager.settings["settings"]["player"]["player"]
-        if p == Select.BLANK:
+        if p == "AutomaticPlayer":
             _player = self.detected_player
         else:
             _player = player_map[p]()
