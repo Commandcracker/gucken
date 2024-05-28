@@ -268,7 +268,6 @@ selenium or playwright
 - [ ] Blacklist detection & bypass
 - [ ] 404 detection inside Hoster and don't crash whole program on http error + crash reports/logs
 - [ ] CI Testing (Windows, Linux)
-- [ ] Automatic git tags
 
 [Anime4k]: https://github.com/bloc97/Anime4K
 [MPV]: https://mpv.io/
