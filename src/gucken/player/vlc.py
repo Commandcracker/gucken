@@ -11,9 +11,12 @@ class VLCPlayer(Player):
         if which("vlc"):
             return "vlc"
         if os_name == "nt":
-            path = r"C:\Program Files\VideoLAN\VLC\vlc.exe"
-            if which(path):
-                return path
+            path_64bit = r"C:\Program Files\VideoLAN\VLC\vlc.exe"
+            if which(path_64bit):
+                return path_64bit
+            path_32bit = r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe"
+            if which(path_32bit):
+                return path_32bit
 
     def play(
         self,
