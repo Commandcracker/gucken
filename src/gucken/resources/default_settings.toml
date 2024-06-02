@@ -36,5 +36,8 @@ enabled = true
 aniworld_to = true
 serienstream_to = false
 
+[settings.ui]
+dark = true
+
 [meta]
 version = "0.0.0"

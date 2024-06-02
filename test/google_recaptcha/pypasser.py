@@ -1,0 +1,2 @@
+from pypasser import reCaptchaV3
+reCaptchaV3("https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Ldd07ogAAAAACktG1QNsMTcUWuwcwtkneCnPDOL&co=aHR0cHM6Ly9icy50bzo0NDM.&hl=en&v=joHA60MeME-PNviL59xVH9zs&size=invisible")

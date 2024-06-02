@@ -1,6 +1,5 @@
-import warnings
-warnings.filterwarnings('ignore', message='Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
-
+from textual._types import IgnoreReturnCallbackType
+from textual.command import Hits, Provider as TextualProvider, Hit, DiscoveryHit
 import argparse
 import logging
 from asyncio import gather
@@ -200,7 +199,48 @@ def move_item(lst: list, from_index: int, to_index: int) -> list:
     return lst
 
 
-client_id = "1238219157464416266"
+CLIENT_ID = "1238219157464416266"
+
+
+class GuckenCommands(TextualProvider):
+
+    @property
+    def _commands(self) -> tuple[tuple[str, IgnoreReturnCallbackType, str], ...]:
+        return (
+            (
+                "Toggle light/dark mode",  # 🌇 / 🌃
+                self.app.action_toggle_dark,
+                "Toggle the application between light and dark mode",
+            ),
+            (
+                "Quit the application",  # ❌
+                self.app.action_quit,
+                "Quit the application as soon as possible",
+            ),
+        )
+
+    """
+    (
+        "Application folders",  # 📁
+        self.app.action_quit,
+        "Displays a list of all folders used",
+    ),
+    (
+        "Create Shortcut",  # 🔗
+        self.app.action_quit,
+        "The will create shortcuts to gucken",
+    )
+    """
+
+    async def discover(self) -> Hits:
+        for name, runnable, help_text in self._commands:
+            yield DiscoveryHit(name, runnable, help=help_text)
+
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        for name, runnable, help_text in self._commands:
+            if (match := matcher.match(name)) > 0:
+                yield Hit(match, matcher.highlight(name), runnable, help=help_text)
 
 
 class GuckenApp(App):
@@ -214,6 +254,7 @@ class GuckenApp(App):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("q", "quit", "Quit", show=False, priority=False),
     ]
+    COMMANDS = {GuckenCommands}
 
     def __init__(self, debug: bool, search: str):
         super().__init__(watch_css=debug)
@@ -409,6 +450,13 @@ class GuckenApp(App):
 
     # TODO: dont lock - no async
     async def on_mount(self) -> None:
+        self.dark = gucken_settings_manager.settings["settings"]["ui"]["dark"]
+
+        def update_dark(value: bool):
+            gucken_settings_manager.settings["settings"]["ui"]["dark"] = value
+
+        self.watch(self, "dark", update_dark)
+
         lang = self.query_one("#lang", DataTable)
         lang.add_columns("Language")
         for l in self.language:
@@ -445,7 +493,7 @@ class GuckenApp(App):
 
     async def enable_RPC(self):
         if self.RPC is None:
-            self.RPC = AioPresence(client_id)
+            self.RPC = AioPresence(CLIENT_ID)
         try:
             await self.RPC.connect()
         except DiscordNotFound:
@@ -489,11 +537,11 @@ class GuckenApp(App):
             items = []
             for series in final_results:
                 items.append(ClickableListItem(
-                        Markdown(
-                            f"##### {series.name} {series.production_year} [{series.provider_name}]"
-                            f"\n{series.description}"
-                        )
-                    ))
+                    Markdown(
+                        f"##### {series.name} {series.production_year} [{series.provider_name}]"
+                        f"\n{series.description}"
+                    )
+                ))
             await results_list_view.extend(items)
         results_list_view.loading = False
         if len(final_results) > 0:
@@ -709,7 +757,8 @@ class GuckenApp(App):
                         if len(script_opts) > 0:
                             args.append(f"--script-opts={','.join(script_opts)}")
 
-                        args.append("--scripts-append=" + str(Path(__file__).parent.joinpath("resources", "mpv_gucken.lua")))
+                        args.append(
+                            "--scripts-append=" + str(Path(__file__).parent.joinpath("resources", "mpv_gucken.lua")))
 
                     if isinstance(_player, VLCPlayer):
                         prepend_data = []
