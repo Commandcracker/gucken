@@ -509,7 +509,7 @@ class GuckenApp(App):
 
     # TODO: https://textual.textualize.io/guide/workers/#thread-workers
     # TODO: Exit on error when debug = true
-    @work(exclusive=True, exit_on_error=False)
+    @work(exclusive=True)  #exit_on_error=False
     async def lookup_anime(self, keyword: str) -> None:
         search_providers = []
         if self.query_one("#aniworld_to", Checkbox).value:

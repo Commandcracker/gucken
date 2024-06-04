@@ -38,6 +38,31 @@ std_headers = {
     # TODO: More variation
 }
 
+import requests
+import base64
+import struct
+
+
+def create_dns_query(domain):
+    # Create a DNS query for the given domain.
+    # This is a basic example and creates a query for type A records.
+    transaction_id = 0x1234
+    flags = 0x0100  # standard query
+    questions = 1
+    answer_rrs = 0
+    authority_rrs = 0
+    additional_rrs = 0
+
+    query = struct.pack(">HHHHHH", transaction_id, flags, questions, answer_rrs, authority_rrs, additional_rrs)
+
+    for part in domain.split('.'):
+        query += struct.pack("B", len(part)) + part.encode()
+
+    query += struct.pack("B", 0)  # end of domain name
+    query += struct.pack(">HH", 1, 1)  # QTYPE=A, QCLASS=IN
+
+    return query
+
 
 # https://github.com/aio-libs/aiohttp/issues/8431
 class RecordType(enum.Enum):
@@ -72,9 +97,10 @@ class DNSOverHTTPSResolver(AbstractResolver):
         headers = {
             "Accept": "application/dns-json"
         }
+        query = create_dns_query(host)
+        encoded_query = base64.urlsafe_b64encode(query).rstrip(b'=')
         params = {
-            'name': host,
-            'type': record_type.name,
+            'dns': encoded_query.decode(),
         }
 
         resolver = self.resolveer_class()
@@ -84,7 +110,7 @@ class DNSOverHTTPSResolver(AbstractResolver):
             print("E:", endpoint)
             async with session.get(endpoint, params=params, headers=headers) as resp:
                 print("T:", resp.content)
-                data = self.json_loads(await resp.text())
+                data = self.json_loads(resp.content)
 
         await connector.close()
 

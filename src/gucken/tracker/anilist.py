@@ -1,4 +1,4 @@
-from httpx import AsyncClient
+from ..networking import AsyncClient
 
 SEARCH_QUERY = """
 query ($id: Int, $page: Int, $perPage: Int, $search: String) {
@@ -24,9 +24,9 @@ query ($id: Int, $page: Int, $perPage: Int, $search: String) {
 
 
 async def search(keyword: str) -> dict:
-    async with AsyncClient(verify=False) as client:
+    async with AsyncClient() as client:
         response = await client.post(
-            f"https://graphql.anilist.co",
+            "https://graphql.anilist.co",
             headers={"Content-Type": "application/json"},
             json={"query": SEARCH_QUERY, "variables": {"search": keyword}},
         )

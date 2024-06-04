@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Union
 
-from httpx import AsyncClient
+from .networking import AsyncClient
 from packaging.version import Version
 
 from . import __version__ as current_version
@@ -16,7 +16,7 @@ class UpdateResult:
 
 
 async def get_latest_version():
-    async with AsyncClient(verify=False) as client:
+    async with AsyncClient() as client:
         response = await client.get(f"https://pypi.org/pypi/{PACKAGE_NAME}/json")
         return response.json().get("info").get("version")
 

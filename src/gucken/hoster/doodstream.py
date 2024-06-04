@@ -5,8 +5,7 @@ from string import ascii_letters, digits
 from time import time
 from urllib.parse import urlparse
 
-from httpx import AsyncClient
-
+from ..networking import AsyncClient
 from .common import DirectLink, Hoster
 
 EXTRACT_DOODSTREAM_HLS_PATTERN = re_compile(r"/pass_md5/[\w-]+/[\w-]+")

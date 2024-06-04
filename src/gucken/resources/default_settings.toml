@@ -39,5 +39,8 @@ serienstream_to = false
 [settings.ui]
 dark = true
 
+#[settings.networking]
+#doh = true
+
 [meta]
 version = "0.0.0"

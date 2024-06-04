@@ -1,8 +1,8 @@
-from httpx import AsyncClient
+from ..networking import AsyncClient
 
 
 async def search(keyword: str) -> dict:
-    async with AsyncClient(verify=False) as client:
+    async with AsyncClient() as client:
         response = await client.get(
             f"https://myanimelist.net/search/prefix.json?type=anime&keyword={keyword}"
         )

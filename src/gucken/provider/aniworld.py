@@ -4,7 +4,7 @@ from html import unescape
 from typing import Union
 
 from bs4 import BeautifulSoup
-from httpx import AsyncClient
+from ..networking import AsyncClient, AcceptLanguage
 
 from ..hoster.doodstream import DoodstreamHoster
 from ..hoster.streamtape import StreamtapeHoster
@@ -42,7 +42,7 @@ class AniWorldEpisode(Episode):
     url: str
 
     async def process_hoster(self) -> dict[Language, list[Hoster]]:
-        async with AsyncClient(verify=False) as client:
+        async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
             response = await client.get(
                 f"{self.url}/staffel-{self.season}/episode-{self.episode_number}"
             )
@@ -131,7 +131,7 @@ class AniWorldProvider(Provider):
     async def search(keyword: str) -> Union[list[AniWorldSearchResult], None]:
         if keyword.strip() == "":
             return None
-        async with AsyncClient(verify=False) as client:
+        async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
             response = await client.get(
                 f"https://{AniWorldProvider.host}/ajax/seriesSearch?keyword={keyword}"
             )
@@ -153,7 +153,7 @@ class AniWorldProvider(Provider):
 
     @staticmethod
     async def get_series(search_result: AniWorldSearchResult) -> AniWorldSeries:
-        async with AsyncClient(verify=False) as client:
+        async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
             response = await client.get(search_result.url)
             soup = BeautifulSoup(response.text, "html.parser")
 
@@ -235,7 +235,7 @@ class AniWorldProvider(Provider):
 
 
 async def get_episodes_from_url(staffel: int, url: str) -> list[Episode]:
-    async with AsyncClient(verify=False) as client:
+    async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
         response = await client.get(f"{url}/staffel-{staffel}")
         return await get_episodes_from_page(staffel, url, response.text)
 

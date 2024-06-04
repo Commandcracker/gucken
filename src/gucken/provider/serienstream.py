@@ -4,13 +4,23 @@ from html import unescape
 from typing import Union
 
 from bs4 import BeautifulSoup
-from httpx import AsyncClient
 
+from ..networking import AcceptLanguage, AsyncClient
 from ..hoster.doodstream import DoodstreamHoster
 from ..hoster.streamtape import StreamtapeHoster
 from ..hoster.veo import VOEHoster
 from ..hoster.vidoza import VidozaHoster
 from .common import Episode, Hoster, Language, Provider, SearchResult, Series
+
+# TODO: Timeouts
+# TODO: use base_url
+# TODO: faster json
+# TODO: reuse same client
+# TODO: do serienstream resolve using mounts (remove veryfy fale from hosts)
+
+
+headers = {"Host": "serienstream.to"}
+extensions = {"sni_hostname": "serienstream.to"}
 
 
 def provider_to_hoster(provider: str, url: str) -> Hoster:
@@ -42,9 +52,9 @@ class SerienStreamEpisode(Episode):
     url: str
 
     async def process_hoster(self) -> dict[Language, list[Hoster]]:
-        async with AsyncClient(verify=False) as client:
+        async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
             response = await client.get(
-                f"{self.url}/staffel-{self.season}/episode-{self.episode_number}"
+                f"{self.url}/staffel-{self.season}/episode-{self.episode_number}", headers=headers, extensions=extensions
             )
             soup = BeautifulSoup(response.text, "html.parser")
             watch_episode = soup.find_all(
@@ -132,9 +142,9 @@ class SerienStreamProvider(Provider):
     async def search(keyword: str) -> Union[list[SerienStreamSearchResult], None]:
         if keyword.strip() == "":
             return None
-        async with AsyncClient(verify=False) as client:
+        async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
             response = await client.get(
-                f"https://{SerienStreamProvider.host}/ajax/seriesSearch?keyword={keyword}"
+                f"https://{SerienStreamProvider.host}/ajax/seriesSearch?keyword={keyword}", headers=headers, extensions=extensions
             )
             results = response.json()
             search_results = []
@@ -154,8 +164,8 @@ class SerienStreamProvider(Provider):
 
     @staticmethod
     async def get_series(search_result: SerienStreamSearchResult) -> SerienStreamSeries:
-        async with AsyncClient(verify=False) as client:
-            response = await client.get(search_result.url)
+        async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
+            response = await client.get(search_result.url, headers=headers, extensions=extensions)
             soup = BeautifulSoup(response.text, "html.parser")
 
             tags = []
@@ -236,8 +246,8 @@ class SerienStreamProvider(Provider):
 
 
 async def get_episodes_from_url(staffel: int, url: str) -> list[Episode]:
-    async with AsyncClient(verify=False) as client:
-        response = await client.get(f"{url}/staffel-{staffel}")
+    async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
+        response = await client.get(f"{url}/staffel-{staffel}", headers=headers, extensions=extensions)
         return await get_episodes_from_page(staffel, url, response.text)
 
 

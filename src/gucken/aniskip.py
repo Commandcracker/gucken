@@ -3,8 +3,8 @@ from typing import Union
 from dataclasses import dataclass
 
 from fuzzywuzzy import process
-from httpx import AsyncClient
 
+from .networking import AsyncClient
 from .tracker.myanimelist import search
 from .rome import replace_roman_numerals
 
@@ -20,7 +20,7 @@ class SkipTimes:
 async def get_timings_from_id(
     anime_id: int, episode_number: int
 ) -> Union[SkipTimes, None]:
-    async with (AsyncClient(verify=False) as client):
+    async with AsyncClient() as client:
         response = await client.get(
             f"https://api.aniskip.com/v1/skip-times/{anime_id}/{episode_number}?types=op&types=ed"
         )

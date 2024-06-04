@@ -1,7 +1,6 @@
 from re import compile as re_compile
 
-from httpx import AsyncClient
-
+from ..networking import AsyncClient
 from .common import DirectLink, Hoster
 
 STREAMTAPE_PATTERN = re_compile(r"botlink(.*?)innerHTML(.*?)\);")
@@ -13,7 +12,7 @@ class StreamtapeHoster(Hoster):
     async def get_direct_link(self) -> DirectLink:
         # TODO: Error checking
         async with AsyncClient(verify=False) as client:
-            response = await client.get(self.url, follow_redirects=True)
+            response = await client.get(self.url)
             # TODO: Save html and error in order to investigate
             # with open("out.txt", "wb") as f:
             #    f.write(response.text.encode('utf-8'))
