@@ -3,9 +3,7 @@ from re import compile as re_compile
 from ..networking import AsyncClient
 from .common import DirectLink, Hoster
 
-STREAMTAPE_PATTERN = re_compile(r"botlink(.*?)innerHTML(.*?)\);")
-STREAMTAPE_PATTERN_SUBSTRING = re_compile(r"substring\(\d+")
-STREAMTAPE_PATTERN_DIGETS = re_compile(r"\d+")
+STREAMTAPE_PATTERN = re_compile(r"'botlink.*innerHTML.*?'(?P<s1>.*)'.*?\+.*?'(?P<s2>.*)'")
 
 
 class StreamtapeHoster(Hoster):
@@ -13,17 +11,10 @@ class StreamtapeHoster(Hoster):
         # TODO: Error checking
         async with AsyncClient(verify=False) as client:
             response = await client.get(self.url)
+
             # TODO: Save html and error in order to investigate
             # with open("out.txt", "wb") as f:
             #    f.write(response.text.encode('utf-8'))
-            video_src = STREAMTAPE_PATTERN.search(response.text)
-            j1 = "".join(video_src.groups())
-            u1 = j1.split(" ")[2][1:-2]
-            u2 = j1[j1.index("('") + 2 : j1.rfind("')")]
 
-            matches = STREAMTAPE_PATTERN_SUBSTRING.findall(j1)
-            for match in matches:
-                sub = STREAMTAPE_PATTERN_DIGETS.search(match).group(0)
-                u2 = u2[int(sub) :]
-
-            return DirectLink(f"https:{u1}{u2}")
+            match = STREAMTAPE_PATTERN.search(response.text)
+            return DirectLink(f"https:{match.group("s1")}{match.group('s2')[4:]}")

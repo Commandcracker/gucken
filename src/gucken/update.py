@@ -5,6 +5,7 @@ from .networking import AsyncClient
 from packaging.version import Version
 
 from . import __version__ as current_version
+from .utils import json_loads
 
 PACKAGE_NAME = "gucken"
 
@@ -18,7 +19,7 @@ class UpdateResult:
 async def get_latest_version():
     async with AsyncClient() as client:
         response = await client.get(f"https://pypi.org/pypi/{PACKAGE_NAME}/json")
-        return response.json().get("info").get("version")
+        return json_loads(response.content).get("info").get("version")
 
 
 async def check() -> Union[UpdateResult, None]:

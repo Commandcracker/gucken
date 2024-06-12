@@ -2,7 +2,7 @@ from textual._types import IgnoreReturnCallbackType
 from textual.command import Hits, Provider as TextualProvider, Hit, DiscoveryHit
 import argparse
 import logging
-from asyncio import gather
+from asyncio import gather, set_event_loop, new_event_loop
 from atexit import register as register_atexit
 from os import remove, name as os_name
 from os.path import join
@@ -12,6 +12,7 @@ from shutil import which
 from subprocess import DEVNULL, PIPE, Popen
 from time import sleep, time
 from typing import ClassVar, List, Union
+from async_lru import alru_cache
 
 from fuzzywuzzy import fuzz
 from platformdirs import user_config_path, user_log_path
@@ -39,6 +40,7 @@ from textual.widgets import (
     TabbedContent,
     TabPane,
 )
+from textual.worker import get_current_worker
 
 from .aniskip import (
     generate_chapters_file,
@@ -375,15 +377,8 @@ class GuckenApp(App):
 
     @on(Input.Changed)
     async def input_changed(self, event: Input.Changed):
-        id = event.control.id
-        value = event.value
-
-        if id == "input":
-            if value:
-                self.lookup_anime(value)
-            else:
-                # TODO: fix sometimes wont clear
-                await self.query_one("#results", ListView).clear()
+        if event.control.id == "input":
+            self.lookup_anime(event.value)
 
     @on(SortableTable.SortChanged)
     async def sortableTable_sortChanged(
@@ -507,21 +502,58 @@ class GuckenApp(App):
             self.RPC.sock_writer.close()
             self.RPC = None
 
-    # TODO: https://textual.textualize.io/guide/workers/#thread-workers
+    @alru_cache(maxsize=64, ttl=600)  # Cache 64 entries. Clear entry after 10 minutes.
+    async def aniworld_search(self, keyword: str) -> Union[list[SearchResult], None]:
+        return await AniWorldProvider.search(keyword)
+
+    @alru_cache(maxsize=64, ttl=600)  # Cache 64 entries. Clear entry after 10 minutes.
+    async def serienstream_search(self, keyword: str) -> Union[list[SearchResult], None]:
+        return await SerienStreamProvider.search(keyword)
+
+    def sync_gather(self, tasks: list):
+        async def gather_all():
+            return await gather(*tasks)
+
+        loop = new_event_loop()
+        set_event_loop(loop)
+        return loop.run_until_complete(gather_all())
+
     # TODO: Exit on error when debug = true
-    @work(exclusive=True)  #exit_on_error=False
-    async def lookup_anime(self, keyword: str) -> None:
-        search_providers = []
-        if self.query_one("#aniworld_to", Checkbox).value:
-            search_providers.append(AniWorldProvider.search(keyword))
+    # TODO: sometimes not removing loading state
+    # TODO: FIX
+    """
+    sys:1: RuntimeWarning: coroutine '_LRUCacheWrapperInstanceMethod.__call__' was never awaited
+    RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+    """
 
-        if self.query_one("#serienstream_to", Checkbox).value:
-            search_providers.append(SerienStreamProvider.search(keyword))
-
+    @work(exclusive=True, thread=True, exit_on_error=False)
+    def lookup_anime(self, keyword: str) -> None:
         results_list_view = self.query_one("#results", ListView)
-        await results_list_view.clear()
+        worker = get_current_worker()
+
+        if keyword is None:
+            if not worker.is_cancelled:
+                self.call_from_thread(results_list_view.clear)
+                results_list_view.loading = False
+            return
+
+        aniworld_to = self.query_one("#aniworld_to", Checkbox).value
+        serienstream_to = self.query_one("#serienstream_to", Checkbox).value
+
+        search_providers = []
+
+        if aniworld_to:
+            search_providers.append(self.aniworld_search(keyword))
+        if serienstream_to:
+            search_providers.append(self.serienstream_search(keyword))
+
+        if worker.is_cancelled:
+            return
+        self.call_from_thread(results_list_view.clear)
         results_list_view.loading = True
-        results = await gather(*search_providers)
+        if worker.is_cancelled:
+            return
+        results = self.sync_gather(search_providers)
         final_results = []
         for l in results:
             if l is not None:
@@ -542,7 +574,9 @@ class GuckenApp(App):
                         f"\n{series.description}"
                     )
                 ))
-            await results_list_view.extend(items)
+            if worker.is_cancelled:
+                return
+            self.call_from_thread(results_list_view.extend, items)
         results_list_view.loading = False
         if len(final_results) > 0:
 
@@ -552,7 +586,7 @@ class GuckenApp(App):
                 except AssertionError:
                     pass
 
-            self.app.call_later(select_first_index)
+            self.call_later(select_first_index)
 
     async def on_key(self, event: events.Key) -> None:
         key = event.key
@@ -597,6 +631,10 @@ class GuckenApp(App):
         )
         dt.loading = False
 
+    @alru_cache(maxsize=32, ttl=600)  # Cache 32 entries. Clear entry after 10 minutes.
+    async def get_series(self, series_search_result: SearchResult):
+        return await series_search_result.get_series()
+
     @work(exclusive=True)
     async def open_info(self) -> None:
         series_search_result: SearchResult = self.current[
@@ -605,13 +643,14 @@ class GuckenApp(App):
         info_tab = self.query_one("#info", TabPane)
         info_tab.disabled = False
         info_tab.loading = True
-        self.query_one(TabbedContent).active = "info"
+        table = self.query_one("#season_list", DataTable)
+        table.focus(scroll_visible=False)
         md = self.query_one("#markdown", Markdown)
-        series = await series_search_result.get_series()
+
+        series = await self.get_series(series_search_result)
         self.current_info = series
         await md.update(series.to_markdown())
 
-        table = self.query_one("#season_list", DataTable)
         table.clear()
         c = 0
         for ep in series.episodes:
@@ -632,7 +671,6 @@ class GuckenApp(App):
                 " ".join(sort_favorite_hoster_by_key(hl, self.hoster)),
                 " ".join(ll),
             )
-        table.focus(scroll_visible=False)
         info_tab.loading = False
 
     @work(exclusive=True, thread=True)
@@ -902,7 +940,7 @@ def main():
     if args.debug:
         logs_path = user_log_path("gucken", ensure_exists=True)
         logging.basicConfig(
-            filename=logs_path.joinpath("gucken.log"), encoding="utf-8", level=logging.INFO
+            filename=logs_path.joinpath("gucken.log"), encoding="utf-8", level=logging.INFO, force=True
         )
 
     register_atexit(gucken_settings_manager.save)

@@ -11,10 +11,10 @@ from ..hoster.streamtape import StreamtapeHoster
 from ..hoster.veo import VOEHoster
 from ..hoster.vidoza import VidozaHoster
 from .common import Episode, Hoster, Language, Provider, SearchResult, Series
+from ..utils import json_loads
 
 # TODO: Timeouts
 # TODO: use base_url
-# TODO: faster json
 # TODO: reuse same client
 # TODO: do serienstream resolve using mounts (remove veryfy fale from hosts)
 
@@ -133,6 +133,9 @@ class SerienStreamSearchResult(SearchResult):
     def url(self) -> str:
         return f"https://{self.host}/serie/stream/{self.link}"
 
+    def __hash__(self):
+        return super().__hash__()
+
 
 @dataclass
 class SerienStreamProvider(Provider):
@@ -146,7 +149,7 @@ class SerienStreamProvider(Provider):
             response = await client.get(
                 f"https://{SerienStreamProvider.host}/ajax/seriesSearch?keyword={keyword}", headers=headers, extensions=extensions
             )
-            results = response.json()
+            results = json_loads(response.content)
             search_results = []
             for series in results:
                 search_results.append(

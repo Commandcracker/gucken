@@ -1,4 +1,5 @@
 from ..networking import AsyncClient
+from ..utils import json_loads
 
 SEARCH_QUERY = """
 query ($id: Int, $page: Int, $perPage: Int, $search: String) {
@@ -30,4 +31,4 @@ async def search(keyword: str) -> dict:
             headers={"Content-Type": "application/json"},
             json={"query": SEARCH_QUERY, "variables": {"search": keyword}},
         )
-        return response.json()
+        return json_loads(response.content)

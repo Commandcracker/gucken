@@ -1,5 +1,5 @@
 from enum import Enum
-from json import loads
+from .utils import json_loads
 from pathlib import Path
 from random import choice
 from urllib.parse import urlparse
@@ -17,7 +17,7 @@ from asyncio import run
 user_agents_path = Path(__file__).parent.joinpath("resources", "user_agents.json")
 with open(user_agents_path, "r") as f:
     user_agents_raw = f.read()
-user_agents = loads(user_agents_raw)
+user_agents = json_loads(user_agents_raw)
 
 
 class AsyncHTTPSRedirectTransport(AsyncBaseTransport):
@@ -106,10 +106,10 @@ class AsyncClient(HttpxAsyncClient):
 async def main():
     async with AsyncClient() as client:
         response = await client.get("https://httpbin.org/headers")
-        print(response.json())
+        print(json_loads(response.content))
     async with HttpxAsyncClient() as client:
         response = await client.get("https://httpbin.org/headers")
-        print(response.json())
+        print(json_loads(response.content))
 
 if __name__ == "__main__":
     run(main())

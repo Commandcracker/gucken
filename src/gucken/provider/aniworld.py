@@ -11,6 +11,7 @@ from ..hoster.streamtape import StreamtapeHoster
 from ..hoster.veo import VOEHoster
 from ..hoster.vidoza import VidozaHoster
 from .common import Episode, Hoster, Language, Provider, SearchResult, Series
+from ..utils import json_loads
 
 
 def provider_to_hoster(provider: str, url: str) -> Hoster:
@@ -122,6 +123,9 @@ class AniWorldSearchResult(SearchResult):
     def url(self) -> str:
         return f"https://{self.host}/anime/stream/{self.link}"
 
+    def __hash__(self):
+        return super().__hash__()
+
 
 @dataclass
 class AniWorldProvider(Provider):
@@ -135,7 +139,7 @@ class AniWorldProvider(Provider):
             response = await client.get(
                 f"https://{AniWorldProvider.host}/ajax/seriesSearch?keyword={keyword}"
             )
-            results = response.json()
+            results = json_loads(response.content)
             search_results = []
             for series in results:
                 search_results.append(

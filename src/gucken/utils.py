@@ -1,3 +1,4 @@
+#import logging
 import os
 import sys
 
@@ -13,6 +14,13 @@ from .player.vlc import VLCPlayer
 from .player.wmplayer import WMPlayer
 
 is_android = hasattr(sys, "getandroidapilevel")
+
+try:
+    from orjson import loads as json_loads
+    # logging.debug("Using orjson")
+except ImportError:
+    from json import loads as json_loads
+    # logging.debug("Using default json")
 
 
 def detect_player() -> Union[Player, None]:

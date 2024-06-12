@@ -7,6 +7,7 @@ from fuzzywuzzy import process
 from .networking import AsyncClient
 from .tracker.myanimelist import search
 from .rome import replace_roman_numerals
+from .utils import json_loads
 
 
 @dataclass
@@ -24,7 +25,7 @@ async def get_timings_from_id(
         response = await client.get(
             f"https://api.aniskip.com/v1/skip-times/{anime_id}/{episode_number}?types=op&types=ed"
         )
-        json = response.json()
+        json = json_loads(response.content)
         if json.get("found") is not True:
             return
         op_start = 0

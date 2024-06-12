@@ -159,7 +159,9 @@ Place your custom CSS in `user_config_path("gucken").joinpath("custom.css")` and
 
 ## Optional dependencies
 
-- `levenshtein` - Faster fuzzy sort/search. (with: `gucken[levenshtein]`)
+- `speedups` (with: `gucken[speedups]`)
+  - Faster fuzzy sort/search. (`levenshtein`)
+  - Faster json parsing. (`orjson`)
 - `socks` - SOCKS proxy support. (with: `gucken[socks]`)
 
 ## Todo
@@ -196,6 +198,7 @@ selenium or playwright
 
 ### UX
 
+- [ ] Add hotkey to clear cache (F5)
 - [ ] Translation DE, EN
 - [ ] Improve settings design
 - [ ] Merge SerienStream.to and AniWorld.to search results
@@ -217,8 +220,9 @@ selenium or playwright
 ### Speedups
 
 - [ ] Pre-fetching
-- [ ] Caching
 - [ ] More threads and asyncio.gather to make everything faster
+- [ ] More Caching
+- [ ] Reuse Client
 
 ### Code
 
@@ -262,7 +266,6 @@ selenium or playwright
 
 ### Bugs & DX
 
-- [ ] FIX TYPING SOMETIMES CAUSES CRASH
 - [ ] Proper error handling
 - [ ] Logging and Crash reports
 - [ ] Blacklist detection & bypass

@@ -64,6 +64,9 @@ class SearchResult:
     def url(self) -> str:
         raise NotImplementedError
 
+    def __hash__(self):
+        return hash(self.provider_name + self.name + self.description)
+
 
 class Provider(ABC):
 
