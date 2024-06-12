@@ -17,4 +17,4 @@ class StreamtapeHoster(Hoster):
             #    f.write(response.text.encode('utf-8'))
 
             match = STREAMTAPE_PATTERN.search(response.text)
-            return DirectLink(f"https:{match.group("s1")}{match.group('s2')[4:]}")
+            return DirectLink(f"https:{match.group('s1')}{match.group('s2')[4:]}")
