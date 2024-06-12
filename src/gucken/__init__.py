@@ -1,4 +1,4 @@
 import warnings
 warnings.filterwarnings('ignore', message='Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"

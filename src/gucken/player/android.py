@@ -3,7 +3,9 @@ from .common import Player
 
 # This is just that you can check if the player is an Android player
 class AndroidPlayer(Player):
-    pass
+    @classmethod
+    def is_available(cls) -> bool:
+        return True
 
 
 class AndroidChoosePlayer(AndroidPlayer):
