@@ -30,6 +30,6 @@ class DoodstreamHoster(Hoster):
             # Require Referer
             response2 = await client.get(str(response1.url.copy_with(path=match.group())))
             return DirectLink(
-                url=f"{response2.text}{random_str()}?token={match.group("token")}&expiry={js_date_now()}",
+                url=f"{response2.text}{random_str()}?token={match.group('token')}&expiry={js_date_now()}",
                 headers={"Referer": str(response2.url.copy_with(path="/"))},
             )
