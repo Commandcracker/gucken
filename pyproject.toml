@@ -7,7 +7,7 @@ maintainers = [{name="Commandcracker"}]
 license = {file = "LICENSE.txt"}
 readme = "README.md"
 dependencies = [
-  "textual>=0.67.0",
+  "textual>=0.70.0",
   "beautifulsoup4>=4.12.3",
   "httpx[http2]>=0.27.0",
   "pypresence>=4.3.0",
@@ -15,7 +15,9 @@ dependencies = [
   "platformdirs>=4.2.2",
   "toml>=0.10.2",
   "fuzzywuzzy>=0.18.0",
-  "async_lru>=2.0.4"
+  "async_lru>=2.0.4",
+  "SQLAlchemy>=2.0.31",
+  "alembic>=1.13.1"
   #"yt-dlp>=2024.4.9",
   #"mpv>=1.0.6",
 ]

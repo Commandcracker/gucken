@@ -1,14 +1,13 @@
 from enum import Enum
+
 from .utils import json_loads
 from pathlib import Path
 from random import choice
-from urllib.parse import urlparse
-
-from httpx import AsyncClient as HttpxAsyncClient, Response, AsyncBaseTransport
+import logging
+from httpx import AsyncClient as HttpxAsyncClient, Response, AsyncBaseTransport, Request
 
 from rich import print
 from asyncio import run
-
 
 # https://www.useragents.me/
 # https://github.com/microlinkhq/top-user-agents/blob/master/src/index.json
@@ -92,15 +91,23 @@ class AsyncClient(HttpxAsyncClient):
 
         super().__init__(*args, **kwargs)
 
-    async def request(self, *args, **kwargs) -> Response:
+    async def send(
+            self,
+            request: Request,
+            **kwargs
+    ) -> Response:
         if self.auto_referer is True:
-            parsed_url = urlparse(args[1])  # maby use httpx.URL instead ?
-            base_url = f'{parsed_url.scheme}://{parsed_url.netloc}'
-            headers = {"Referer": base_url}
-            if kwargs.get("headers") is not None:
-                headers = {**kwargs.get("headers"), **headers}
-            kwargs["headers"] = headers
-        return await super().request(*args, **kwargs)
+            request.headers["Referer"] = str(request.url.copy_with(path="/", query=None))
+        response = await super().send(request, **kwargs)
+        logging.info(
+            'HTTP Request: %s %s "%s %d %s"',
+            request.method,
+            request.url,
+            response.http_version,
+            response.status_code,
+            response.reason_phrase,
+        )
+        return response
 
 
 async def main():
@@ -110,6 +117,7 @@ async def main():
     async with HttpxAsyncClient() as client:
         response = await client.get("https://httpbin.org/headers")
         print(json_loads(response.content))
+
 
 if __name__ == "__main__":
     run(main())
