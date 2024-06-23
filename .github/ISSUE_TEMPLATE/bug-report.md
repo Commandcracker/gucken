@@ -1,7 +1,7 @@
 ---
 name: "🐞 Bug Report"
 about: "Report an issue."
-title: "[Bug]: "
+title: "[Bug] "
 labels: "Bug"
 
 ---
@@ -16,13 +16,13 @@ labels: "Bug"
 
 ---
 
-#### 🔄 Is this a regression? <!-- Optional -->
+#### **🔄 Is this a regression?** <!-- Optional -->
 <!-- Did this behaviour used to work in the previous version? -->
 <!-- Yes, the last version in which this bug was not present was: ... -->
 
 ---
 
-#### 🐾 To Reproduce
+#### **🐾 To Reproduce**
 <!-- Steps to reproduce the error:
 
 (e.g.:)
@@ -40,26 +40,26 @@ labels: "Bug"
 
 ---
 
-#### 🎯 Expected behaviour
+#### **🎯 Expected behaviour**
 <!-- A clear and concise description of what you expected to happen. -->
 
 *
 
 ---
 
-#### 📷 Screenshots or Videos
+#### **📷 Screenshots or Videos**
 <!-- If applicable, add screenshots or videos to help explain your problem. -->
 
 ---
 
-#### 📜 Logs
+#### **📜 Logs**
 <!-- If applicable, add logs to help explain your problem. -->
 
 *
 
 ---
 
-#### 💻 Your environment
+#### **💻 Your environment**
 <!-- use all the applicable bulleted list elements for this specific issue,
 and remove all the bulleted list elements that are not relevant for this issue. -->
 
@@ -68,7 +68,7 @@ and remove all the bulleted list elements that are not relevant for this issue. 
 
 ---
 
-#### 📚 Additional context <!-- Optional -->
+#### **📚 Additional context** <!-- Optional -->
 <!-- Add any other context or additional information about the problem here.-->
 
 *
