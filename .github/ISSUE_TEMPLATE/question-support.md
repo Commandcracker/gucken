@@ -9,7 +9,7 @@ labels: "Question/Support"
 # ❓ Question or Support Request
 <!-- Please search open and closed issues before submitting a new one! -->
 
-#### **✍️ Describe your question or ask for support**
+#### ✍️ Describe your question or ask for support
 <!-- A clear and concise description of what your doubt is. -->
 
 *
