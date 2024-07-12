@@ -1,5 +1,6 @@
 # Default settings
 [settings]
+pip = false
 fullscreen = true
 syncplay = false
 discord_presence = false

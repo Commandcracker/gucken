@@ -408,6 +408,11 @@ class GuckenApp(App):
                             id="autoplay",
                             value=settings["autoplay"]["enabled"],
                         )
+                        yield RadioButton(
+                            "PiP Mode (MPV & VLC only)",
+                            id="pip",
+                            value=settings["pip"],
+                        )
                         yield Select.from_values(
                             available_players_keys,
                             id="player",
@@ -416,7 +421,7 @@ class GuckenApp(App):
                                 Select.BLANK if player == "AutomaticPlayer" else player
                             ),
                         )
-                    with Collapsible(title="ani-skip (only for MPV and VLC)", collapsed=False):
+                    with Collapsible(title="ani-skip (MPV & VLC only)", collapsed=False):
                         yield RadioButton(
                             "Skip opening",
                             id="ani_skip_opening",
@@ -483,6 +488,10 @@ class GuckenApp(App):
 
         if id == "autoplay":
             settings["autoplay"]["enabled"] = event.value
+            return
+
+        if id == "pip":
+            settings["pip"] = event.value
             return
 
         settings[id] = event.value
@@ -853,6 +862,17 @@ class GuckenApp(App):
             if watchtime:
                 args.append(f"--start={seconds_to_hms(int(watchtime.time))}")
 
+        # Picture-in-Picture mode
+        if gucken_settings_manager.settings["settings"]["pip"]:
+            if isinstance(_player, MPVPlayer):
+                args.append("--ontop")
+                args.append("--no-border")
+                args.append("--snap-window")
+
+            if isinstance(_player, VLCPlayer):
+                args.append("--video-on-top")
+                args.append("--qt-minimal-view")
+                args.append("--no-video-deco")
 
         # TODO: cache more
         # TODO: Support based on mpv

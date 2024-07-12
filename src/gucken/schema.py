@@ -6,7 +6,7 @@ You may do changes in tables here, then execute
 and alembic would generate new migration for you
 in staff/alembic/versions folder.
 """
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, MetaData
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, MetaData, Boolean
 from sqlalchemy.orm import declarative_base
 
 
@@ -46,10 +46,10 @@ class Anime(Base):
 class Watchtime(Base):
     __tablename__ = 'watchtime'
 
-    #watchtime_id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     anime_id = Column(Integer, ForeignKey('anime.anime_id'), primary_key=True, nullable=False)
     episode = Column(Integer, primary_key=True, nullable=False)
     season = Column(Integer, primary_key=True, nullable=False)
+    #completed = Column(Boolean, nullable=False)
     time = Column(Float, nullable=False)
 
     def __repr__(self) -> str:
