@@ -7,17 +7,17 @@ maintainers = [{name="Commandcracker"}]
 license = {file = "LICENSE.txt"}
 readme = "README.md"
 dependencies = [
-  "textual>=0.67.0",
+  "textual==0.67.0", # 0.87.1
   "beautifulsoup4>=4.12.3",
-  "httpx[http2]>=0.27.0",
+  "httpx[http2]>=0.28.0",
   "pypresence>=4.3.0",
-  "packaging>=24.1",
-  "platformdirs>=4.2.2",
+  "packaging>=24.2",
+  "platformdirs>=4.3.6",
   "toml>=0.10.2",
   "fuzzywuzzy>=0.18.0",
   "async_lru>=2.0.4"
-  #"yt-dlp>=2024.4.9",
-  #"mpv>=1.0.6",
+  #"yt-dlp>=2024.11.18",
+  #"mpv>=1.0.7",
 ]
 keywords = [
   "gucken",
@@ -49,10 +49,10 @@ classifiers = [
 
 [project.optional-dependencies]
 speedups = [
-  "levenshtein>=0.25.1",
-  "orjson>=3.10.4"
+  "levenshtein>=0.26.1",
+  "orjson>=3.10.12"
 ]
-socks = ["httpx[socks]>=0.27.0"]
+socks = ["httpx[socks]>=0.28.0"]
 
 [project.urls]
 Repository = "https://github.com/Commandcracker/gucken"
