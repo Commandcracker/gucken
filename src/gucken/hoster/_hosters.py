@@ -4,6 +4,10 @@ from .doodstream import DoodstreamHoster
 from .streamtape import StreamtapeHoster
 from .veo import VOEHoster
 from .vidoza import VidozaHoster
+from .filemoon import FilemoonHoster
+from .luluvdo import LuluvdoHoster
+from .speedfiles import SpeedFilesHoster
+from .vidmoly import VidmolyHoster
 
 hoster = TwoWayDict(
     {
@@ -11,5 +15,9 @@ hoster = TwoWayDict(
         "ST": StreamtapeHoster,
         "VEO": VOEHoster,
         "VZ": VidozaHoster,
+        "FM": FilemoonHoster,
+        "LU": LuluvdoHoster,
+        "SF": SpeedFilesHoster,
+        "VM": VidmolyHoster
     }
 )

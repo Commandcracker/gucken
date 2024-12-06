@@ -11,10 +11,14 @@ language = [
     "JP_ENSUB"
 ]
 hoster = [
-    "ST",
     "VEO",
     "VZ",
-    "DS"
+    "DS",
+    "SF",
+    "FM",
+    "LU",
+    "VM",
+    "ST"
 ]
 update_checker = true
 

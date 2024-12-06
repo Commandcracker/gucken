@@ -10,6 +10,10 @@ from ..hoster.doodstream import DoodstreamHoster
 from ..hoster.streamtape import StreamtapeHoster
 from ..hoster.veo import VOEHoster
 from ..hoster.vidoza import VidozaHoster
+from ..hoster.filemoon import FilemoonHoster
+from ..hoster.luluvdo import LuluvdoHoster
+from ..hoster.speedfiles import SpeedFilesHoster
+from ..hoster.vidmoly import VidmolyHoster
 from .common import Episode, Hoster, Language, Provider, SearchResult, Series
 from ..utils import json_loads
 
@@ -32,6 +36,14 @@ def provider_to_hoster(provider: str, url: str) -> Hoster:
         return VidozaHoster(url)
     if provider == "Streamtape":
         return StreamtapeHoster(url)
+    if provider == "SpeedFiles":
+        return SpeedFilesHoster(url)
+    if provider == "Filemoon":
+        return FilemoonHoster(url)
+    if provider == "Luluvdo":
+        return LuluvdoHoster(url)
+    if provider == "Vidmoly":
+        return VidmolyHoster(url)
 
 
 def lang_img_src_lang_name_to_lang(name: str) -> Language:
@@ -286,6 +298,14 @@ async def get_episodes_from_soup(
                 hoster.add(VidozaHoster)
             if t == "Streamtape":
                 hoster.add(StreamtapeHoster)
+            if t == "SpeedFiles":
+                hoster.add(SpeedFilesHoster)
+            if t == "Filemoon":
+                hoster.add(FilemoonHoster)
+            if t == "Luluvdo":
+                hoster.add(LuluvdoHoster)
+            if t == "Vidmoly":
+                hoster.add(VidmolyHoster)
 
         e_count += 1
         title_en = title.find("span").text.strip()

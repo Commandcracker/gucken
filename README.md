@@ -119,10 +119,14 @@ List of supported Anime sites
 
 List of supported video hoster.
 
-- [x] Streamtape
 - [x] VEO
 - [x] Vidoza
 - [x] Doodstream
+- [x] SpeedFiles
+- [x] ~~Streamtape~~
+- [ ] Filemoon
+- [ ] Luluvdo
+- [ ] Vidmoly
 
 ## Player
 
