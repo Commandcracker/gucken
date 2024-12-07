@@ -6,14 +6,14 @@ from typing import Union
 from bs4 import BeautifulSoup
 
 from ..networking import AcceptLanguage, AsyncClient
-from ..hoster.doodstream import DoodstreamHoster
-from ..hoster.streamtape import StreamtapeHoster
 from ..hoster.veo import VOEHoster
 from ..hoster.vidoza import VidozaHoster
+from ..hoster.speedfiles import SpeedFilesHoster
+from ..hoster.doodstream import DoodstreamHoster
+from ..hoster.vidmoly import VidmolyHoster
 from ..hoster.filemoon import FilemoonHoster
 from ..hoster.luluvdo import LuluvdoHoster
-from ..hoster.speedfiles import SpeedFilesHoster
-from ..hoster.vidmoly import VidmolyHoster
+from ..hoster.streamtape import StreamtapeHoster
 from .common import Episode, Hoster, Language, Provider, SearchResult, Series
 from ..utils import json_loads
 

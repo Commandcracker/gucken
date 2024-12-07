@@ -123,10 +123,10 @@ List of supported video hoster.
 - [x] Vidoza
 - [x] Doodstream
 - [x] SpeedFiles
-- [x] ~~Streamtape~~
+- [x] Vidmoly
+- [x] Streamtape (Removed from AniWorld & SerienStream)
 - [ ] Filemoon
 - [ ] Luluvdo
-- [ ] Vidmoly
 
 ## Player
 

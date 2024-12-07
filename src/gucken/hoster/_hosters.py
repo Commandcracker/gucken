@@ -1,23 +1,23 @@
 from textual._two_way_dict import TwoWayDict
 
-from .doodstream import DoodstreamHoster
-from .streamtape import StreamtapeHoster
 from .veo import VOEHoster
 from .vidoza import VidozaHoster
+from .speedfiles import SpeedFilesHoster
+from .doodstream import DoodstreamHoster
+from .vidmoly import VidmolyHoster
 from .filemoon import FilemoonHoster
 from .luluvdo import LuluvdoHoster
-from .speedfiles import SpeedFilesHoster
-from .vidmoly import VidmolyHoster
+from .streamtape import StreamtapeHoster
 
 hoster = TwoWayDict(
     {
-        "DS": DoodstreamHoster,
-        "ST": StreamtapeHoster,
         "VEO": VOEHoster,
         "VZ": VidozaHoster,
+        "SF": SpeedFilesHoster,
+        "DS": DoodstreamHoster,
+        "VM": VidmolyHoster,
         "FM": FilemoonHoster,
         "LU": LuluvdoHoster,
-        "SF": SpeedFilesHoster,
-        "VM": VidmolyHoster
+        "ST": StreamtapeHoster
     }
 )

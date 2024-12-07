@@ -15,9 +15,9 @@ hoster = [
     "VZ",
     "DS",
     "SF",
+    "VM",
     "FM",
     "LU",
-    "VM",
     "ST"
 ]
 update_checker = true
