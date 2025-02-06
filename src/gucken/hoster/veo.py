@@ -4,8 +4,7 @@ from re import compile as re_compile
 from ..networking import AsyncClient
 from .common import DirectLink, Hoster
 
-
-REDIRECT_PATTERN = re_compile("https?://[^\s'\"<>]+")
+REDIRECT_PATTERN = re_compile("https?://[^'\"<>]+")
 EXTRACT_VEO_HLS_PATTERN = re_compile(r"'hls': '(?P<hls>.*)'")
 
 
