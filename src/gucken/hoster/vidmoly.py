@@ -5,7 +5,7 @@ from ..networking import AsyncClient
 
 from .common import DirectLink, Hoster
 
-VIDMOLY_PATTERN = re_compile("sources: \[{file:\"(?P<url>.*?)\"}]")
+VIDMOLY_PATTERN = re_compile(r"sources: \[{file:\"(?P<url>.*?)\"}]")
 
 
 @dataclass
