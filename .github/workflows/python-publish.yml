@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Set up Python 🧰
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55
         with:
           python-version: 3.x
 
@@ -31,7 +31,7 @@ jobs:
         run: python -m build
 
       - name: Publish package 🚀
-        uses: Commandcracker/pypi-publish@8d13f542c4bb425036897e69001b670654c41a8d
+        uses: Commandcracker/pypi-publish@ddf48cf80be92772ea5c647390693f488b015e23
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
