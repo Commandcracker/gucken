@@ -7,16 +7,16 @@ maintainers = [{name="Commandcracker"}]
 license = {file = "LICENSE.txt"}
 readme = "README.md"
 dependencies = [
-  "textual==0.67.0", # 1.0.0
+  "textual==0.67.0", # 3.0.1
   "beautifulsoup4>=4.13.3",
   "httpx[http2]>=0.28.1",
   "pypresence>=4.3.0",
   "packaging>=24.2",
-  "platformdirs>=4.3.6",
+  "platformdirs>=4.3.7",
   "toml>=0.10.2",
   "fuzzywuzzy>=0.18.0",
-  "async_lru>=2.0.4"
-  #"yt-dlp>=2025.1.26 ",
+  "async_lru>=2.0.5"
+  #"yt-dlp>=2025.3.31",
   #"mpv>=1.0.7",
 ]
 keywords = [
@@ -49,8 +49,8 @@ classifiers = [
 
 [project.optional-dependencies]
 speedups = [
-  "levenshtein>=0.26.1",
-  "orjson>=3.10.15"
+  "levenshtein>=0.27.1",
+  "orjson>=3.10.16"
 ]
 socks = ["httpx[socks]>=0.28.1"]
 
