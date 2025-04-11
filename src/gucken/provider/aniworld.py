@@ -1,6 +1,5 @@
 from asyncio import gather
 from dataclasses import dataclass
-from html import unescape
 from typing import Union
 
 from bs4 import BeautifulSoup
@@ -16,7 +15,7 @@ from ..hoster.luluvdo import LuluvdoHoster
 from ..hoster.streamtape import StreamtapeHoster
 from .common import Episode, Hoster, Language, Provider, SearchResult, Series
 from ..utils import json_loads
-
+from ..utils import fully_unescape
 
 def provider_to_hoster(provider: str, url: str) -> Hoster:
     if provider == "VOE":
@@ -157,9 +156,9 @@ class AniWorldProvider(Provider):
                 search_results.append(
                     AniWorldSearchResult(
                         provider_name="aniworld.to",
-                        name=unescape(series.get("name")).strip(),
+                        name=fully_unescape(series.get("name")).strip(),
                         link=series.get("link"),
-                        description=unescape(series.get("description")),
+                        description=fully_unescape(series.get("description")),
                         cover=f"https://{AniWorldProvider.host}{series.get('cover')}",
                         production_year=series.get("productionYear"),
                         host=AniWorldProvider.host,
@@ -227,15 +226,15 @@ class AniWorldProvider(Provider):
 
             return AniWorldSeries(
                 # cover=f"https://{search_result.host}" + soup.find("div", class_="seriesCoverBox").find("img").attrs.get("data-src"),
-                name=unescape(
+                name=fully_unescape(
                     soup.find("h1", attrs={"itemprop": "name"}).find("span").text
                 ).strip(),
-                production_year=unescape(
+                production_year=fully_unescape(
                     soup.find("div", class_="series-title").find("small").text
                 ).strip(),
                 # age=int(soup.find("div", class_="fsk").find("span").text),
                 # imdb_link=soup.find("a", class_="imdb-link").attrs.get("href"),
-                full_description=unescape(
+                full_description=fully_unescape(
                     soup.find("p", class_="seri_des").attrs.get("data-full-description")
                 ),
                 regisseure=directors,
@@ -298,8 +297,8 @@ async def get_episodes_from_soup(
                 hoster.add(VidmolyHoster)
 
         e_count += 1
-        title_en = title.find("span").text.strip()
-        title_de = title.find("strong").text.strip()
+        title_en = fully_unescape(title.find("span").text.strip())
+        title_de = fully_unescape(title.find("strong").text.strip())
         title = (
             f"{title_en} - {title_de}"
             if title_en and title_de

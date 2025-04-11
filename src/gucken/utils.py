@@ -1,6 +1,7 @@
 #import logging
 import os
 import sys
+from html import unescape
 
 from typing import Union
 from typing import NamedTuple
@@ -103,3 +104,16 @@ def get_vlc_intf_user_path(player_path: str) -> VLCPaths:
 
 def set_default_vlc_interface_cfg(key: str, value: any) -> str:
     return f'config["{key}"] = config["{key}"] or ' + str(value) or "nil"
+
+
+def fully_unescape(s: str) -> str:
+    """
+    Aniworld and SerienStream have many broken/escaped html entities.
+    This function will unescape all of them!
+    """
+    while True:
+        prev = s
+        s = unescape(s)
+        if s == prev:
+            break
+    return s
