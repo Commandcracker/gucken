@@ -18,6 +18,7 @@ hoster = [
     "VM",
     "FM",
     "LU",
+    "LX",
     "ST"
 ]
 update_checker = true
@@ -41,7 +42,7 @@ aniworld_to = true
 serienstream_to = false
 
 [settings.ui]
-dark = true
+theme = "tokyo-night"
 
 #[settings.networking]
 #doh = true

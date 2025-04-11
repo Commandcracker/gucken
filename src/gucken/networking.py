@@ -1,8 +1,7 @@
 from enum import Enum
-from .utils import json_loads
-from pathlib import Path
 from random import choice
 from urllib.parse import urlparse
+from typing import Union
 
 from httpx import AsyncClient as HttpxAsyncClient, Response, AsyncBaseTransport
 
@@ -11,14 +10,50 @@ from asyncio import run
 
 
 # https://www.useragents.me/
-# https://github.com/microlinkhq/top-user-agents/blob/master/src/index.json
 # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/utils/networking.py
-# TODO: generate and dict into ios android mac win etc
-user_agents_path = Path(__file__).parent.joinpath("resources", "user_agents.json")
-with open(user_agents_path, "r") as f:
-    user_agents_raw = f.read()
-user_agents = json_loads(user_agents_raw)
-
+def random_user_agent():
+    _USER_AGENT_TPL = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s Safari/537.36'
+    _CHROME_VERSIONS = (
+        '90.0.4430.212',
+        '90.0.4430.24',
+        '90.0.4430.70',
+        '90.0.4430.72',
+        '90.0.4430.85',
+        '90.0.4430.93',
+        '91.0.4472.101',
+        '91.0.4472.106',
+        '91.0.4472.114',
+        '91.0.4472.124',
+        '91.0.4472.164',
+        '91.0.4472.19',
+        '91.0.4472.77',
+        '92.0.4515.107',
+        '92.0.4515.115',
+        '92.0.4515.131',
+        '92.0.4515.159',
+        '92.0.4515.43',
+        '93.0.4556.0',
+        '93.0.4577.15',
+        '93.0.4577.63',
+        '93.0.4577.82',
+        '94.0.4606.41',
+        '94.0.4606.54',
+        '94.0.4606.61',
+        '94.0.4606.71',
+        '94.0.4606.81',
+        '94.0.4606.85',
+        '95.0.4638.17',
+        '95.0.4638.50',
+        '95.0.4638.54',
+        '95.0.4638.69',
+        '95.0.4638.74',
+        '96.0.4664.18',
+        '96.0.4664.45',
+        '96.0.4664.55',
+        '96.0.4664.93',
+        '97.0.4692.20',
+    )
+    return _USER_AGENT_TPL % choice(_CHROME_VERSIONS)
 
 class AsyncHTTPSRedirectTransport(AsyncBaseTransport):
     async def handle_async_request(self, request) -> Response:
@@ -39,7 +74,7 @@ class AsyncClient(HttpxAsyncClient):
             follow_redirects: bool = True,
             auto_referer: bool = True,
             https_only: bool = True,
-            accept_language: AcceptLanguage = AcceptLanguage.EN,
+            accept_language: Union[AcceptLanguage, None] = AcceptLanguage.EN,
             **kwargs
     ) -> None:
         # verify=False
@@ -50,7 +85,7 @@ class AsyncClient(HttpxAsyncClient):
         # aiodns / dnspython[doh]
         # socksio - SOCKS proxy support. (Optional, with httpx[socks])
 
-        user_agent = choice(user_agents)
+        user_agent = random_user_agent()
         headers = {
             # Add others
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -70,9 +105,9 @@ class AsyncClient(HttpxAsyncClient):
             # TODO: More variation
         }
 
-        if accept_language is accept_language.EN:
+        if accept_language is AcceptLanguage.EN:
             headers["Accept-Language"] = "en-us,en;q=0.5"  # "en-US,en;q=0.9", "en-US"
-        elif accept_language is accept_language.DE:
+        elif accept_language is AcceptLanguage.DE:
             headers["Accept-Language"] = choice([
                 "de-DE,de;q=0.9",
                 "de",  # found on macos
@@ -80,8 +115,6 @@ class AsyncClient(HttpxAsyncClient):
                 "de-DE,de",
                 "de,en-US;q=0.7,en;q=0.3"
             ])
-        else:
-            raise Exception()
 
         if kwargs.get("headers") is not None:
             headers = {**kwargs.get("headers"), **headers}
@@ -104,6 +137,7 @@ class AsyncClient(HttpxAsyncClient):
 
 
 async def main():
+    from .utils import json_loads
     async with AsyncClient() as client:
         response = await client.get("https://httpbin.org/headers")
         print(json_loads(response.content))

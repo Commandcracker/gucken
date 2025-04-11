@@ -1,5 +1,6 @@
 from textual._two_way_dict import TwoWayDict
 
+from .loadx import LoadXHoster
 from .veo import VOEHoster
 from .vidoza import VidozaHoster
 from .speedfiles import SpeedFilesHoster
@@ -17,6 +18,7 @@ hoster = TwoWayDict(
         "DS": DoodstreamHoster,
         "VM": VidmolyHoster,
         "FM": FilemoonHoster,
+        "LX": LoadXHoster,
         "LU": LuluvdoHoster,
         "ST": StreamtapeHoster
     }

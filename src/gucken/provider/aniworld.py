@@ -110,15 +110,15 @@ class AniWorldSeries(Series):
     def to_markdown(self) -> str:
         string_builder = [f"# {self.name} {self.production_year}\n{self.full_description}\n\n"]
         if len(self.regisseure) > 0:
-            string_builder.append(f"**Regisseure**: {', '.join(self.regisseure)}\\\n")
+            string_builder.append(f"- **Regisseure**: {', '.join(self.regisseure)}\n")
         if len(self.schauspieler) > 0:
-            string_builder.append(f"**Schauspieler**: {', '.join(self.schauspieler)}\\\n")
+            string_builder.append(f"- **Schauspieler**: {', '.join(self.schauspieler)}\n")
         if len(self.produzent) > 0:
-            string_builder.append(f"**Produzent**: {', '.join(self.produzent)}\\\n")
+            string_builder.append(f"- **Produzent**: {', '.join(self.produzent)}\n")
         if len(self.land) > 0:
-            string_builder.append(f"**Land**: {', '.join(self.land)}\\\n")
+            string_builder.append(f"- **Land**: {', '.join(self.land)}\n")
         if len(self.tags) > 0:
-            string_builder.append(f"**Tags**: {', '.join(self.tags)}")
+            string_builder.append(f"- **Tags**: {', '.join(self.tags)}")
         return "".join(string_builder)
 
 

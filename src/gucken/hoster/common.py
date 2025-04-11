@@ -1,8 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from ..networking import AsyncClient
-from httpx import HTTPError
+from httpx import HTTPError, AsyncClient
 
 
 @dataclass
@@ -12,7 +11,7 @@ class DirectLink:
 
     async def check_is_working(self) -> bool:
         try:
-            async with AsyncClient(verify=False, auto_referer=False) as client:
+            async with AsyncClient(verify=False) as client:
                 response = await client.head(
                     self.url, headers=self.headers
                 )

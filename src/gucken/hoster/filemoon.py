@@ -9,4 +9,5 @@ FILEMOON_PATTERN = re_compile("")
 # TODO: WIP !!!
 class FilemoonHoster(Hoster):
     async def get_direct_link(self) -> DirectLink:
+        # See https://github.com/shashstormer/godstream/blob/master/extractors/filemoon.py
         return DirectLink("WIP")

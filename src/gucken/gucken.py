@@ -1,5 +1,3 @@
-from textual._types import IgnoreReturnCallbackType
-from textual.command import Hits, Provider as TextualProvider, Hit, DiscoveryHit
 import argparse
 import logging
 from asyncio import gather, set_event_loop, new_event_loop
@@ -13,6 +11,7 @@ from subprocess import DEVNULL, PIPE, Popen
 from time import sleep, time
 from typing import ClassVar, List, Union
 from async_lru import alru_cache
+from os import getenv
 
 from fuzzywuzzy import fuzz
 from platformdirs import user_config_path, user_log_path
@@ -41,7 +40,7 @@ from textual.widgets import (
     TabPane,
 )
 from textual.worker import get_current_worker
-
+from rich_argparse import RichHelpFormatter
 from .aniskip import (
     generate_chapters_file,
     get_timings_from_search
@@ -58,7 +57,7 @@ from .provider.serienstream import SerienStreamProvider
 from .settings import gucken_settings_manager
 from .update import check
 from .utils import detect_player, is_android, set_default_vlc_interface_cfg, get_vlc_intf_user_path
-
+from . import __version__
 
 def sort_favorite_lang(
         language_list: List[Language], pio_list: List[str]
@@ -204,51 +203,8 @@ def move_item(lst: list, from_index: int, to_index: int) -> list:
 CLIENT_ID = "1238219157464416266"
 
 
-class GuckenCommands(TextualProvider):
-
-    @property
-    def _commands(self) -> tuple[tuple[str, IgnoreReturnCallbackType, str], ...]:
-        return (
-            (
-                "Toggle light/dark mode",  # 🌇 / 🌃
-                self.app.action_toggle_dark,
-                "Toggle the application between light and dark mode",
-            ),
-            (
-                "Quit the application",  # ❌
-                self.app.action_quit,
-                "Quit the application as soon as possible",
-            ),
-        )
-
-    """
-    (
-        "Application folders",  # 📁
-        self.app.action_quit,
-        "Displays a list of all folders used",
-    ),
-    (
-        "Create Shortcut",  # 🔗
-        self.app.action_quit,
-        "The will create shortcuts to gucken",
-    )
-    """
-
-    async def discover(self) -> Hits:
-        for name, runnable, help_text in self._commands:
-            yield DiscoveryHit(name, runnable, help=help_text)
-
-    async def search(self, query: str) -> Hits:
-        matcher = self.matcher(query)
-        for name, runnable, help_text in self._commands:
-            if (match := matcher.match(name)) > 0:
-                yield Hit(match, matcher.highlight(name), runnable, help=help_text)
-
-
 class GuckenApp(App):
-    TITLE = "Gucken TUI"
-    # TODO: color theme https://textual.textualize.io/guide/design/#designing-with-colors
-
+    TITLE = f"Gucken {__version__}"
     CSS_PATH = [join("resources", "gucken.css")]
     custom_css = user_config_path("gucken").joinpath("custom.css")
     if custom_css.exists():
@@ -256,7 +212,8 @@ class GuckenApp(App):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("q", "quit", "Quit", show=False, priority=False),
     ]
-    COMMANDS = {GuckenCommands}
+
+    # TODO: theme_changed_signal
 
     def __init__(self, debug: bool, search: str):
         super().__init__(watch_css=debug)
@@ -322,7 +279,7 @@ class GuckenApp(App):
                     yield ClickableDataTable(id="season_list")
             with TabPane("Settings", id="setting"):  # Settings "⚙"
                 # TODO: dont show unneeded on android
-                with ScrollableContainer():
+                with ScrollableContainer(id="settings_container"):
                     yield SortableTable(id="lang")
                     yield SortableTable(id="host")
                     yield RadioButton(
@@ -373,7 +330,7 @@ class GuckenApp(App):
                         )
         # yield Footer()
         with Center(id="footer"):
-            yield Label("Made by Commandcracker with [red]:heart:[/red]")
+            yield Label("Made by Commandcracker with [red]❤[/red]")
 
     @on(Input.Changed)
     async def input_changed(self, event: Input.Changed):
@@ -445,12 +402,12 @@ class GuckenApp(App):
 
     # TODO: dont lock - no async
     async def on_mount(self) -> None:
-        self.dark = gucken_settings_manager.settings["settings"]["ui"]["dark"]
+        self.theme = getenv("TEXTUAL_THEME") or gucken_settings_manager.settings["settings"]["ui"]["theme"]
 
-        def update_dark(value: bool):
-            gucken_settings_manager.settings["settings"]["ui"]["dark"] = value
+        def on_theme_change(old_value: str, new_value: str) -> None:
+            gucken_settings_manager.settings["settings"]["ui"]["theme"] = new_value
 
-        self.watch(self, "dark", update_dark)
+        self.watch(self.app, "theme", on_theme_change, init=False)
 
         lang = self.query_one("#lang", DataTable)
         lang.add_columns("Language")
@@ -471,11 +428,10 @@ class GuckenApp(App):
 
             self.call_later(set_search)
 
-        self.query_one("#info", TabPane).loading = True
+        self.query_one("#info", TabPane).set_loading(True)
 
         table = self.query_one("#season_list", DataTable)
         table.cursor_type = "row"
-        table.add_columns("FT", "S", "F", "Title", "Hoster", "Sprache")
 
         if self.query_one("#update_checker", RadioButton).value is True:
             self.update_check()
@@ -534,7 +490,7 @@ class GuckenApp(App):
         if keyword is None:
             if not worker.is_cancelled:
                 self.call_from_thread(results_list_view.clear)
-                results_list_view.loading = False
+                self.call_from_thread(results_list_view.set_loading, False)
             return
 
         aniworld_to = self.query_one("#aniworld_to", Checkbox).value
@@ -550,7 +506,7 @@ class GuckenApp(App):
         if worker.is_cancelled:
             return
         self.call_from_thread(results_list_view.clear)
-        results_list_view.loading = True
+        self.call_from_thread(results_list_view.set_loading, True)
         if worker.is_cancelled:
             return
         results = self.sync_gather(search_providers)
@@ -577,7 +533,7 @@ class GuckenApp(App):
             if worker.is_cancelled:
                 return
             self.call_from_thread(results_list_view.extend, items)
-        results_list_view.loading = False
+        self.call_from_thread(results_list_view.set_loading, False)
         if len(final_results) > 0:
 
             def select_first_index():
@@ -621,7 +577,7 @@ class GuckenApp(App):
     async def play_selected(self):
         dt = self.query_one("#season_list", DataTable)
         # TODO: show loading
-        dt.loading = True
+        #dt.set_loading(True)
         index = self.app.query_one("#results", ListView).index
         series_search_result = self.current[index]
         self.play(
@@ -629,7 +585,7 @@ class GuckenApp(App):
             episodes=self.current_info.episodes,
             index=dt.cursor_row,
         )
-        dt.loading = False
+        #dt.set_loading(False)
 
     @alru_cache(maxsize=32, ttl=600)  # Cache 32 entries. Clear entry after 10 minutes.
     async def get_series(self, series_search_result: SearchResult):
@@ -642,7 +598,7 @@ class GuckenApp(App):
         ]
         info_tab = self.query_one("#info", TabPane)
         info_tab.disabled = False
-        info_tab.loading = True
+        info_tab.set_loading(True)
         table = self.query_one("#season_list", DataTable)
         table.focus(scroll_visible=False)
         md = self.query_one("#markdown", Markdown)
@@ -651,7 +607,10 @@ class GuckenApp(App):
         self.current_info = series
         await md.update(series.to_markdown())
 
-        table.clear()
+        # make sure to reset colum spacing
+        table.clear(columns=True)
+        table.add_columns("FT", "S", "F", "Title", "Hoster", "Sprache")
+
         c = 0
         for ep in series.episodes:
             hl = []
@@ -671,7 +630,7 @@ class GuckenApp(App):
                 " ".join(sort_favorite_hoster_by_key(hl, self.hoster)),
                 " ".join(ll),
             )
-        info_tab.loading = False
+        info_tab.set_loading(False)
 
     @work(exclusive=True, thread=True)
     async def update_check(self):
@@ -931,12 +890,24 @@ exit_quotes = [
 
 def main():
     parser = argparse.ArgumentParser(
-        prog='Gucken',
-        description="Gucken is a Terminal User Interface which allows you to browse and watch your favorite anime's with style."
+        prog='gucken',
+        description="Gucken is a Terminal User Interface which allows you to browse and watch your favorite anime's with style.",
+        formatter_class=RichHelpFormatter
     )
     parser.add_argument("search", nargs='?')
-    parser.add_argument("--debug", "--dev", action="store_true")
+    parser.add_argument(
+        "--debug", "--dev",
+        action="store_true",
+        help='enables logging and live tcss reload'
+    )
+    parser.add_argument(
+        '-V', '--version',
+        action='store_true',
+        help='display version information.'
+    )
     args = parser.parse_args()
+    if args.version:
+        exit(f"gucken {__version__}")
     if args.debug:
         logs_path = user_log_path("gucken", ensure_exists=True)
         logging.basicConfig(
@@ -944,6 +915,7 @@ def main():
         )
 
     register_atexit(gucken_settings_manager.save)
+    print(f"\033]0;Gucken {__version__}\007", end='', flush=True)
     gucken_app = GuckenApp(debug=args.debug, search=args.search)
     gucken_app.run()
     print(choice(exit_quotes))

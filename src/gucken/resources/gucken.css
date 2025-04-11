@@ -1,3 +1,30 @@
+/*TODO: cleanup this*/
+$accent: $primary;
+
+/*beautify scrollbar*/
+* {
+    scrollbar-background:        $surface-lighten-1;
+    scrollbar-background-hover:  $surface-lighten-2;
+    scrollbar-background-active: $surface-lighten-3;
+
+    scrollbar-color:        $primary;
+    scrollbar-color-hover:  $primary-lighten-1;
+    scrollbar-color-active: $primary-lighten-2;
+
+    scrollbar-corner-color: $surface;
+}
+
+/*make button-off red*/
+.toggle--button {
+    color: $text-error ;
+}
+
+.-on > .toggle--button {
+    color: $text-success;
+}
+
+/*TODO: cleanup from here*/
+
 Next {
     align: center middle;
 }
@@ -25,6 +52,7 @@ Next > Container > Horizontal > Button {
 }
 
 #hosters {
+    padding-top: 1;
     height: auto;
 }
 
@@ -33,42 +61,64 @@ Next > Container > Horizontal > Button {
 }
 
 #markdown {
-    margin: 0 0;
-    margin-top: -2;
+    margin: 1;
+    padding: 1;
+    padding-top: -1;
+    padding-bottom: 0;
 }
 
 /*TODO: make height 100 of what the table needs, so there is only one scroll*/
 #season_list {
-    margin: 1 0;
-    margin-top: 0;
-    margin-bottom: 0;
     min-height: 3;
+    margin: 1;
+    margin-bottom: 0;
 }
 
 TabbedContent #--content-tab-setting {
     dock: right;
-    margin-right: 1;
 }
 
 #setting > RadioButton {
     margin-bottom: 1;
 }
 
-ClickableListItem {
-    padding-bottom: -1;
-    padding-left: -1;
-    padding-right: -1;
+ClickableListItem Markdown {
+    background: $surface 50%;
+    margin: 0;
+    padding: 0;
 }
 
 #footer {
-    background: $accent;
-    color: $text;
+    background: $panel;
     dock: bottom;
-    height: 1;
 }
 
 SortableTable {
     width: auto;
 }
 
-/*$accent: lime;*/
+TabbedContent {
+    padding: 1;
+}
+
+Tab {
+    margin-right: 1;
+}
+
+/*settings*/
+#settings_container > * {
+    margin: 1;
+}
+
+#settings_container > Collapsible > * > * > * {
+    margin-top: 1;
+}
+
+#settings_container > Collapsible > * > *  {
+    margin-top: 1;
+}
+
+#settings_container > Collapsible > * > *:first-of-type {
+    margin-top: 0;
+}
+
