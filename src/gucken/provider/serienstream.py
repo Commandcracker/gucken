@@ -311,7 +311,7 @@ async def get_episodes_from_soup(
         title_en = fully_unescape(title.find("span").text.strip())
         title_de = fully_unescape(title.find("strong").text.strip())
         title = (
-            "{title_en} - {title_de}"
+            f"{title_en} - {title_de}"
             if title_en and title_de
             else title_en or title_de
         )
