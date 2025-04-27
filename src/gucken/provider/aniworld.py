@@ -13,6 +13,7 @@ from ..hoster.vidmoly import VidmolyHoster
 from ..hoster.filemoon import FilemoonHoster
 from ..hoster.luluvdo import LuluvdoHoster
 from ..hoster.streamtape import StreamtapeHoster
+from ..hoster.loadx import LoadXHoster
 from .common import Episode, Hoster, Language, Provider, SearchResult, Series
 from ..utils import json_loads
 from ..utils import fully_unescape
@@ -34,6 +35,8 @@ def provider_to_hoster(provider: str, url: str) -> Hoster:
         return LuluvdoHoster(url)
     if provider == "Vidmoly":
         return VidmolyHoster(url)
+    if provider == "LoadX":
+        return LoadXHoster(url)
 
 
 def lang_img_src_lang_name_to_lang(name: str) -> Language:
@@ -295,6 +298,8 @@ async def get_episodes_from_soup(
                 hoster.add(LuluvdoHoster)
             if t == "Vidmoly":
                 hoster.add(VidmolyHoster)
+            if t == "LoadX":
+                hoster.add(LoadXHoster)
 
         e_count += 1
         title_en = fully_unescape(title.find("span").text.strip())

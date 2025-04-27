@@ -7,18 +7,18 @@ maintainers = [{name="Commandcracker"}]
 license = {file = "LICENSE.txt"}
 readme = "README.md"
 dependencies = [
-  "textual>=3.0.1",
-  "beautifulsoup4>=4.13.3",
+  "textual>=3.1.1",
+  "beautifulsoup4>=4.13.4",
   "httpx[http2]>=0.28.1",
   "pypresence>=4.3.0",
-  "packaging>=24.2",
+  "packaging>=25.0",
   "platformdirs>=4.3.7",
   "toml>=0.10.2",
   "fuzzywuzzy>=0.18.0",
   "async_lru>=2.0.5",
   "rich-argparse>=1.7.0"
   #"yt-dlp>=2025.3.31",
-  #"mpv>=1.0.7",
+  #"mpv>=1.0.8",
 ]
 keywords = [
   "gucken",

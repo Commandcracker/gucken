@@ -4,6 +4,7 @@ from typing import Union
 
 from bs4 import BeautifulSoup
 
+from ..hoster.loadx import LoadXHoster
 from ..networking import AcceptLanguage, AsyncClient
 from ..hoster.veo import VOEHoster
 from ..hoster.vidoza import VidozaHoster
@@ -44,7 +45,8 @@ def provider_to_hoster(provider: str, url: str) -> Hoster:
         return LuluvdoHoster(url)
     if provider == "Vidmoly":
         return VidmolyHoster(url)
-
+    if provider == "LoadX":
+        return LoadXHoster(url)
 
 def lang_img_src_lang_name_to_lang(name: str) -> Language:
     if name == "english":
@@ -306,6 +308,8 @@ async def get_episodes_from_soup(
                 hoster.add(LuluvdoHoster)
             if t == "Vidmoly":
                 hoster.add(VidmolyHoster)
+            if t == "LoadX":
+                hoster.add(LoadXHoster)
 
         e_count += 1
         title_en = fully_unescape(title.find("span").text.strip())

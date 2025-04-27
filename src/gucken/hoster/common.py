@@ -8,6 +8,7 @@ from httpx import HTTPError, AsyncClient
 class DirectLink:
     url: str
     headers: dict[str, str] = None
+    force_hls: bool = False
 
     async def check_is_working(self) -> bool:
         try:
