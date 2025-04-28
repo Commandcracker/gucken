@@ -1,3 +1,4 @@
+import logging
 from asyncio import gather
 from dataclasses import dataclass
 from typing import Union
@@ -228,7 +229,6 @@ class AniWorldProvider(Provider):
                     feps.append(b)
 
             return AniWorldSeries(
-                # cover=f"https://{search_result.host}" + soup.find("div", class_="seriesCoverBox").find("img").attrs.get("data-src"),
                 name=fully_unescape(
                     soup.find("h1", attrs={"itemprop": "name"}).find("span").text
                 ).strip(),
@@ -249,6 +249,7 @@ class AniWorldProvider(Provider):
                 # rating_count=int(soup.find("span", attrs={"itemprop": "ratingCount"}).text),
                 # staffeln=count,
                 episodes=feps,
+                cover=f"https://{search_result.host}" + soup.find("img", attrs={"itemprop": "image"}).attrs.get("data-src")
             )
 
 

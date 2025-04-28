@@ -1,5 +1,6 @@
 # Default settings
 [settings]
+image_display = true
 pip = false
 fullscreen = true
 syncplay = false

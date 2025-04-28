@@ -238,7 +238,6 @@ class SerienStreamProvider(Provider):
                     feps.append(b)
 
             return SerienStreamSeries(
-                # cover=f"https://{search_result.host}" + soup.find("div", class_="seriesCoverBox").find("img").attrs.get("data-src"),
                 name=fully_unescape(
                     soup.find("h1", attrs={"itemprop": "name"}).find("span").text
                 ).strip(),
@@ -259,6 +258,7 @@ class SerienStreamProvider(Provider):
                 # rating_count=int(soup.find("span", attrs={"itemprop": "ratingCount"}).text),
                 # staffeln=count,
                 episodes=feps,
+                cover=f"https://{search_result.host}" + soup.find("img", attrs={"itemprop": "image"}).attrs.get("data-src")
             )
 
 

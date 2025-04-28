@@ -12,6 +12,7 @@ from time import sleep, time
 from typing import ClassVar, List, Union
 from async_lru import alru_cache
 from os import getenv
+from io import BytesIO
 
 from fuzzywuzzy import fuzz
 from platformdirs import user_config_path, user_log_path
@@ -20,7 +21,7 @@ from rich.markup import escape
 from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
-from textual.containers import Center, Container, Horizontal, ScrollableContainer
+from textual.containers import Center, Container, Horizontal, ScrollableContainer, Vertical
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import (
@@ -40,11 +41,13 @@ from textual.widgets import (
     TabPane,
 )
 from textual.worker import get_current_worker
+from textual_image.widget import Image
 from rich_argparse import RichHelpFormatter
 from .aniskip import (
     generate_chapters_file,
     get_timings_from_search
 )
+
 from .custom_widgets import SortableTable
 from .hoster._hosters import hoster
 from .hoster.common import DirectLink, Hoster
@@ -57,7 +60,9 @@ from .provider.serienstream import SerienStreamProvider
 from .settings import gucken_settings_manager
 from .update import check
 from .utils import detect_player, is_android, set_default_vlc_interface_cfg, get_vlc_intf_user_path
+from .networking import AsyncClient
 from . import __version__
+
 
 def sort_favorite_lang(
         language_list: List[Language], pio_list: List[str]
@@ -275,13 +280,23 @@ class GuckenApp(App):
                 yield ListView(id="results")
             with TabPane("Info", id="info", disabled=True):  # Info "ℹ"
                 with ScrollableContainer(id="res_con"):
-                    yield Markdown(id="markdown")
+                    yield Horizontal(
+                        Image(id="image"),
+                        Markdown(id="markdown"),
+                        id="res_con_2"
+                    )
+
                     yield ClickableDataTable(id="season_list")
             with TabPane("Settings", id="setting"):  # Settings "⚙"
                 # TODO: dont show unneeded on android
                 with ScrollableContainer(id="settings_container"):
                     yield SortableTable(id="lang")
                     yield SortableTable(id="host")
+                    yield RadioButton(
+                        "Image display",
+                        id="image_display",
+                        value=settings["image_display"],
+                    )
                     yield RadioButton(
                         "Update checker",
                         id="update_checker",
@@ -389,6 +404,10 @@ class GuckenApp(App):
         if id == "pip":
             settings["pip"] = event.value
             return
+
+        if id == "image_display" and event.value == False:
+            img: Image = self.query_one("#image", Image)
+            img.image = None
 
         settings[id] = event.value
 
@@ -615,6 +634,12 @@ class GuckenApp(App):
         series = await self.get_series(series_search_result)
         self.current_info = series
         await md.update(series.to_markdown())
+
+        if gucken_settings_manager.settings["settings"]["image_display"]:
+            img: Image = self.query_one("#image", Image)
+            async with AsyncClient(verify=False) as client:
+                response = await client.get(series.cover)
+                img.image = BytesIO(response.content)
 
         # make sure to reset colum spacing
         table.clear(columns=True)

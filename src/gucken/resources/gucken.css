@@ -60,13 +60,6 @@ Next > Container > Horizontal > Button {
     margin: 1 0;
 }
 
-#markdown {
-    margin: 1;
-    padding: 1;
-    padding-top: -1;
-    padding-bottom: 0;
-}
-
 /*TODO: make height 100 of what the table needs, so there is only one scroll*/
 #season_list {
     min-height: 3;
@@ -122,3 +115,22 @@ Tab {
     margin-top: 0;
 }
 
+#image {
+    padding-top: 1;
+    height: 20;
+    width: auto;
+    background: $background;
+}
+
+#res_con_2 {
+     height: auto;
+}
+
+#markdown {
+    margin: 1;
+    padding: 1;
+    padding-top: -1;
+    margin-bottom: -1;
+    height: auto;
+    width: 1fr;
+}

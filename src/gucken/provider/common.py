@@ -40,6 +40,7 @@ class Episode:
 class Series:
     name: str
     episodes: list[Episode]
+    cover: str
 
     # description: str
 
