@@ -127,7 +127,7 @@ List of supported video hoster.
 - [x] Streamtape (Removed from AniWorld & SerienStream)
 - [x] Luluvdo
 - [x] LoadX
-- [ ] Filemoon
+- [x] Filemoon
 
 ## Player
 

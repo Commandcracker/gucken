@@ -30,6 +30,13 @@ class DirectLink:
 
 
 @dataclass
+class EmptyDirectLink(DirectLink):
+    url: str = None
+
+    async def check_is_working(self) -> bool:
+        return False
+
+@dataclass
 class Hoster:
     url: str
     requires_headers: bool = False
