@@ -8,8 +8,8 @@ Gucken is a Terminal User Interface which allows you to browse and watch your fa
 
 ## Usage
 
-<img alt="Search" src="https://github.com/Commandcracker/gucken/assets/49335821/d91de2af-c086-485c-8aec-1e68cdb02aa3"/>
-<img alt="Watch" src="https://github.com/Commandcracker/gucken/assets/49335821/7354eeff-bd97-4226-91b9-317939128a81"/> 
+<img alt="Search" src="https://github.com/user-attachments/assets/bbb321d6-57a9-45cb-9029-f181957ffbc3"/>
+<img alt="Watch" src="https://github.com/user-attachments/assets/53ff5d11-1032-4c1c-8f7f-8e7da8cca53e"/> 
 
 ## Installation
 
