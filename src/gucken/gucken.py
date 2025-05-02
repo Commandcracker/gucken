@@ -100,13 +100,41 @@ def sort_favorite_hoster_by_key(
     return sorted(hoster_list, key=hoster_sort_key)
 
 
-async def get_working_direct_link(hosters: list[Hoster]) -> Union[DirectLink, None]:
+async def get_working_direct_link(hosters: list[Hoster], app: "GuckenApp") -> Union[DirectLink, None]:
     for hoster in hosters:
-        direct_link = await hoster.get_direct_link()
+        name = type(hoster).__name__
+        try:
+            direct_link = await hoster.get_direct_link()
+        except Exception:
+            logging.warning(
+                "%s: failed to retrieve video URL from: \"%s\"",
+                name,
+                hoster.url,
+                exc_info=True
+            )
+            app.notify(
+                "Failed to retrieve video URL",
+                title=f"{name} error",
+                severity="warning",
+            )
+            continue
+        if direct_link is None:
+            logging.warning(
+                "%s: failed to retrieve video URL from: \"%s\"",
+                name,
+                hoster.url,
+                exc_info=True
+            )
+            app.notify(
+                "Failed to retrieve video URL",
+                title=f"{name} error",
+                severity="warning",
+            )
+            continue
         is_working = await direct_link.check_is_working()
         logging.info(
             'Check: "%s" Working: "%s" URL: "%s"',
-            type(hoster).__name__,
+            name,
             is_working,
             direct_link,
         )
@@ -716,7 +744,7 @@ class GuckenApp(App):
 
         lang = sort_favorite_lang(episode.available_language, self.language)[0]
         sorted_hoster = sort_favorite_hoster(processed_hoster.get(lang), self.hoster)
-        direct_link = await get_working_direct_link(sorted_hoster)
+        direct_link = await get_working_direct_link(sorted_hoster, self)
 
         # TODO: check for header support
         syncplay = gucken_settings_manager.settings["settings"]["syncplay"]

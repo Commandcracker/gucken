@@ -240,7 +240,6 @@ selenium or playwright
 - [ ] Update checker option to perform update
 - [ ] Watchlist
 - [ ] New anime/series Notifications
-- [ ] Image preview (Kitty protocol, iterm protocol, Sixel, textual-web)
 - [ ] Use something like opencv to time match a sub from aniworld with a high quality video form another site.
 - [ ] Nix package
 - [ ] Docker image
@@ -271,7 +270,6 @@ selenium or playwright
 
 ### Bugs & DX
 
-- [ ] Proper error handling
 - [ ] Logging and Crash reports
 - [ ] Blacklist detection & bypass
 - [ ] 404 detection inside Hoster and don't crash whole program on http error + crash reports/logs

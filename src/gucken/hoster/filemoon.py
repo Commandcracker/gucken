@@ -1,7 +1,6 @@
-import logging
 from re import compile as re_compile
 
-from .common import DirectLink, Hoster, EmptyDirectLink
+from .common import DirectLink, Hoster
 from ..networking import AsyncClient
 from ..packer import unpack
 
@@ -33,6 +32,3 @@ class FilemoonHoster(Hoster):
                 video_match = VIDEO_URL_REGEX.search(unpacked)
                 if video_match:
                     return DirectLink(video_match.group(1))
-
-            logging.warning("Filemoon: failed to retrieve video URL from: \"%s\"", self.url)
-            return EmptyDirectLink()
