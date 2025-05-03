@@ -9,7 +9,7 @@ from .common import DirectLink, Hoster
 
 REDIRECT_PATTERN = re_compile("https?://[^'\"<>]+")
 
-# Credit
+# Modified
 # https://github.com/wolfswolke/aniworld_scraper/blob/41bd0f23cbc02352481dd92e6d986d1fe30c76bf/src/logic/search_for_links.py#L23
 
 def deb_func1(input_string):
@@ -56,17 +56,8 @@ def deb_func(input_var):
 
 def find_script_element(raw_html):
     soup = BeautifulSoup(raw_html, features="html.parser")
-    script_object = soup.find_all("script")
-    obfuscated_string = ""
-    for script in script_object:
-        script = str(script)
-        if "KGMAaM=" in script:
-            obfuscated_string = script
-            break
-    if obfuscated_string == "":
-        return None
-    obfuscated_string = obfuscated_string.split('MKGMa="')[1]
-    obfuscated_string = obfuscated_string.split('"')[0]
+    script_object = soup.find("script", type="application/json")
+    obfuscated_string = script_object.text[2:-2]
     output = deb_func(obfuscated_string)
     return output["source"]
 

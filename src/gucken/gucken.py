@@ -118,28 +118,32 @@ async def get_working_direct_link(hosters: list[Hoster], app: "GuckenApp") -> Un
                 severity="warning",
             )
             continue
-        if direct_link is None:
+        if not direct_link or not direct_link.url or not isinstance(direct_link.url, str) or not isinstance(direct_link, DirectLink):
             logging.warning(
-                "%s: failed to retrieve video URL from: \"%s\"",
+                "%s: Returned empty URL: \"%s\"",
                 name,
-                hoster.url,
-                exc_info=True
+                hoster.url
             )
             app.notify(
-                "Failed to retrieve video URL",
+                "Returned empty URL",
                 title=f"{name} error",
                 severity="warning",
             )
             continue
         is_working = await direct_link.check_is_working()
-        logging.info(
-            'Check: "%s" Working: "%s" URL: "%s"',
-            name,
-            is_working,
-            direct_link,
-        )
         if is_working:
             return direct_link
+        else:
+            logging.warning(
+                "%s: Video URL is not working: \"%s\"",
+                name,
+                direct_link.url or "None"
+            )
+            app.notify(
+                "Video URL is not working",
+                title=f"{name} error",
+                severity="warning",
+            )
     return None
 
 

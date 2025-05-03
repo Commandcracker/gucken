@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Union
 
-from .networking import AsyncClient
 from packaging.version import Version
 
 from . import __version__ as current_version
+from .networking import AsyncClient
 from .utils import json_loads
 
 PACKAGE_NAME = "gucken"
@@ -31,7 +31,6 @@ async def check() -> Union[UpdateResult, None]:
 
 def main():
     from asyncio import run
-
     print(run(check()))
 
 

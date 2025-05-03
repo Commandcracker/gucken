@@ -11,6 +11,8 @@ class DirectLink:
     force_hls: bool = False
 
     async def check_is_working(self) -> bool:
+        if not self.url:
+            return False
         try:
             async with AsyncClient(verify=False) as client:
                 response = await client.head(

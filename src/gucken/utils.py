@@ -1,10 +1,8 @@
-#import logging
-import os
 import sys
 from html import unescape
-
-from typing import Union
-from typing import NamedTuple
+from os import getenv
+from os.path import join, dirname
+from typing import Union, NamedTuple
 
 from .player.android import AndroidChoosePlayer
 from .player.common import Player
@@ -15,13 +13,15 @@ from .player.vlc import VLCPlayer
 from .player.wmplayer import WMPlayer
 
 is_android = hasattr(sys, "getandroidapilevel")
+is_windows = sys.platform.startswith("win")
+is_linux = sys.platform.startswith("linux")
+is_mac_os = sys.platform.startswith("darwin")
+is_bsd = "freebsd" in sys.platform or sys.platform.startswith("dragonfly")
 
 try:
     from orjson import loads as json_loads
-    # logging.debug("Using orjson")
 except ImportError:
     from json import loads as json_loads
-    # logging.debug("Using default json")
 
 
 def detect_player() -> Union[Player, None]:
@@ -47,22 +47,6 @@ def detect_player() -> Union[Player, None]:
     return None
 
 
-def is_windows():
-    return sys.platform.startswith("win")
-
-
-def is_linux():
-    return sys.platform.startswith("linux")
-
-
-def is_mac_os():
-    return sys.platform.startswith("darwin")
-
-
-def is_bsd():
-    return "freebsd" in sys.platform or sys.platform.startswith("dragonfly")
-
-
 class VLCPaths(NamedTuple):
     vlc_intf_path: str
     vlc_intf_user_path: str
@@ -70,28 +54,28 @@ class VLCPaths(NamedTuple):
 
 
 def get_vlc_intf_user_path(player_path: str) -> VLCPaths:
-    if is_linux():
+    if is_linux:
         if 'snap' in player_path:
             vlc_intf_path = '/snap/vlc/current/usr/lib/vlc/lua/intf/'
-            vlc_intf_user_path = os.path.join(os.getenv('HOME', '.'), "snap/vlc/current/.local/share/vlc/lua/intf/")
+            vlc_intf_user_path = join(getenv('HOME', '.'), "snap/vlc/current/.local/share/vlc/lua/intf/")
         else:
             vlc_intf_path = "/usr/lib/vlc/lua/intf/"
-            vlc_intf_user_path = os.path.join(os.getenv('HOME', '.'), ".local/share/vlc/lua/intf/")
-    elif is_mac_os():
+            vlc_intf_user_path = join(getenv('HOME', '.'), ".local/share/vlc/lua/intf/")
+    elif is_mac_os:
         vlc_intf_path = "/Applications/VLC.app/Contents/MacOS/share/lua/intf/"
-        vlc_intf_user_path = os.path.join(
-            os.getenv('HOME', '.'), "Library/Application Support/org.videolan.vlc/lua/intf/")
-    elif is_bsd():
+        vlc_intf_user_path = join(
+            getenv('HOME', '.'), "Library/Application Support/org.videolan.vlc/lua/intf/")
+    elif is_bsd:
         # *BSD ports/pkgs install to /usr/local by default.
         # This should also work for all the other BSDs, such as OpenBSD or DragonFly.
         vlc_intf_path = "/usr/local/lib/vlc/lua/intf/"
-        vlc_intf_user_path = os.path.join(os.getenv('HOME', '.'), ".local/share/vlc/lua/intf/")
+        vlc_intf_user_path = join(getenv('HOME', '.'), ".local/share/vlc/lua/intf/")
     elif "vlcportable.exe" in player_path.lower():
-        vlc_intf_path = os.path.dirname(player_path).replace("\\", "/") + "/App/vlc/lua/intf/"
+        vlc_intf_path = dirname(player_path).replace("\\", "/") + "/App/vlc/lua/intf/"
         vlc_intf_user_path = vlc_intf_path
     else:
-        vlc_intf_path = os.path.dirname(player_path).replace("\\", "/") + "/lua/intf/"
-        vlc_intf_user_path = os.path.join(os.getenv('APPDATA', '.'), "VLC\\lua\\intf\\")
+        vlc_intf_path = dirname(player_path).replace("\\", "/") + "/lua/intf/"
+        vlc_intf_user_path = join(getenv('APPDATA', '.'), "VLC\\lua\\intf\\")
 
     vlc_module_path = vlc_intf_path + "modules/?.luac"
 

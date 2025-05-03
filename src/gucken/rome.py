@@ -17,8 +17,9 @@ def roman_to_int(roman: str) -> int:
     return result
 
 
-def replace_roman_numerals(text: str) -> str:
-    def repl(match):
-        return str(roman_to_int(match.group(0)))
+def _repl(match):
+    return str(roman_to_int(match.group()))
 
-    return ROMAN_PATTERN.sub(repl, text)
+
+def replace_roman_numerals(text: str) -> str:
+    return ROMAN_PATTERN.sub(_repl, text)

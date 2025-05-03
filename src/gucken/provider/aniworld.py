@@ -19,38 +19,33 @@ from .common import Episode, Hoster, Language, Provider, SearchResult, Series
 from ..utils import json_loads
 from ..utils import fully_unescape
 
+HOSTER_MAP = {
+    "VOE": VOEHoster,
+    "Doodstream": DoodstreamHoster,
+    "Vidoza": VidozaHoster,
+    "Streamtape": StreamtapeHoster,
+    "SpeedFiles": SpeedFilesHoster,
+    "Filemoon": FilemoonHoster,
+    "Luluvdo": LuluvdoHoster,
+    "Vidmoly": VidmolyHoster,
+    "LoadX": LoadXHoster
+}
+
+LANGUAGE_MAP = {
+    "english": Language.EN,
+    "english-german": Language.EN_DESUB,
+    "japanese-english": Language.JP_ENSUB,
+    "japanese-german": Language.JP_DESUB,
+    "german": Language.DE
+}
+
 def provider_to_hoster(provider: str, url: str) -> Hoster:
-    if provider == "VOE":
-        return VOEHoster(url)
-    if provider == "Doodstream":
-        return DoodstreamHoster(url)
-    if provider == "Vidoza":
-        return VidozaHoster(url)
-    if provider == "Streamtape":
-        return StreamtapeHoster(url)
-    if provider == "SpeedFiles":
-        return SpeedFilesHoster(url)
-    if provider == "Filemoon":
-        return FilemoonHoster(url)
-    if provider == "Luluvdo":
-        return LuluvdoHoster(url)
-    if provider == "Vidmoly":
-        return VidmolyHoster(url)
-    if provider == "LoadX":
-        return LoadXHoster(url)
+    if provider in HOSTER_MAP:
+        return HOSTER_MAP[provider](url)
 
 
 def lang_img_src_lang_name_to_lang(name: str) -> Language:
-    if name == "english":
-        return Language.EN
-    if name == "english-german":
-        return Language.EN_DESUB
-    if name == "japanese-english":
-        return Language.JP_ENSUB
-    if name == "japanese-german":
-        return Language.JP_DESUB
-    if name == "german":
-        return Language.DE
+    return LANGUAGE_MAP[name]
 
 
 @dataclass
@@ -283,24 +278,8 @@ async def get_episodes_from_soup(
         hoster = set()
         for h in episode.find_all_next("i", class_="icon"):
             t = h.attrs.get("title")
-            if t == "VOE":
-                hoster.add(VOEHoster)
-            if t == "Doodstream":
-                hoster.add(DoodstreamHoster)
-            if t == "Vidoza":
-                hoster.add(VidozaHoster)
-            if t == "Streamtape":
-                hoster.add(StreamtapeHoster)
-            if t == "SpeedFiles":
-                hoster.add(SpeedFilesHoster)
-            if t == "Filemoon":
-                hoster.add(FilemoonHoster)
-            if t == "Luluvdo":
-                hoster.add(LuluvdoHoster)
-            if t == "Vidmoly":
-                hoster.add(VidmolyHoster)
-            if t == "LoadX":
-                hoster.add(LoadXHoster)
+            if t in HOSTER_MAP:
+                hoster.add(HOSTER_MAP[t])
 
         e_count += 1
         title_en = fully_unescape(title.find("span").text.strip())
