@@ -1,12 +1,11 @@
 from enum import Enum
 from random import choice
-from urllib.parse import urlparse
 from typing import Union
-
-from httpx import AsyncClient as HttpxAsyncClient, Response, AsyncBaseTransport
-
-from rich import print
+from logging import info
 from asyncio import run
+
+from httpx import AsyncClient as HttpxAsyncClient, Response, AsyncBaseTransport, Request
+from rich import print
 
 
 # https://www.useragents.me/
@@ -125,16 +124,23 @@ class AsyncClient(HttpxAsyncClient):
 
         super().__init__(*args, **kwargs)
 
-    async def request(self, *args, **kwargs) -> Response:
+    async def send(
+            self,
+            request: Request,
+            **kwargs
+    ) -> Response:
         if self.auto_referer is True:
-            parsed_url = urlparse(args[1])  # maby use httpx.URL instead ?
-            base_url = f'{parsed_url.scheme}://{parsed_url.netloc}'
-            headers = {"Referer": base_url}
-            if kwargs.get("headers") is not None:
-                headers = {**kwargs.get("headers"), **headers}
-            kwargs["headers"] = headers
-        return await super().request(*args, **kwargs)
-
+            request.headers["Referer"] = str(request.url.copy_with(path="/", query=None))
+        response = await super().send(request, **kwargs)
+        info(
+            'HTTP Request: %s %s "%s %d %s"',
+            request.method,
+            request.url,
+            response.http_version,
+            response.status_code,
+            response.reason_phrase,
+        )
+        return response
 
 async def main():
     from .utils import json_loads

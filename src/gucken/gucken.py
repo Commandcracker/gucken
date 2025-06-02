@@ -1,21 +1,23 @@
-import argparse
+from ._logging import setup
 import logging
+from platformdirs import user_config_path, user_log_path, user_data_path
+from rich.style import Style
+import argparse
 from asyncio import gather, set_event_loop, new_event_loop
 from atexit import register as register_atexit
-from os import remove, name as os_name
 from os.path import join
 from pathlib import Path
 from random import choice
 from shutil import which
 from subprocess import DEVNULL, PIPE, Popen
 from time import sleep, time
-from typing import ClassVar, List, Union
+from typing import ClassVar, List, Union, Self
 from async_lru import alru_cache
-from os import getenv
+from os import getenv, chdir, remove, name as os_name
+from sys import argv
 from io import BytesIO
 
 from fuzzywuzzy import fuzz
-from platformdirs import user_config_path, user_log_path
 from pypresence import AioPresence, DiscordNotFound
 from rich.markup import escape
 from textual import events, on, work
@@ -62,6 +64,32 @@ from .update import check
 from .utils import detect_player, is_android, set_default_vlc_interface_cfg, get_vlc_intf_user_path
 from .networking import AsyncClient
 from . import __version__
+from .db import Session
+from .schema import Anime, Watchtime
+from sqlalchemy.orm.session import Session as ORMSession
+
+from sqlite3.__main__ import main as sqlite3_main
+from alembic.__main__ import main as alembic_main
+
+
+def seconds_to_hms(seconds: int) -> str:
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+
+def hms_to_seconds(hms: str) -> int:
+    hours, minutes, seconds = map(int, hms.split(":"))
+    return hours * 3600 + minutes * 60 + seconds
+
+
+def get_anime(session: Session, provider: str, name: str) -> Anime:
+    anime = session.query(Anime).filter_by(provider=provider, name=name).first()
+    if not anime:
+        anime = Anime(provider=provider, name=name)
+        session.add(anime)
+        session.commit()
+    return anime
 
 
 def sort_favorite_lang(
@@ -207,6 +235,37 @@ class ClickableDataTable(DataTable):
         self.last_click[row_index] = time()
 
 
+class SeasonListDataTable(ClickableDataTable):
+    COMPONENT_CLASSES = {
+        "seasonlistdatatable--completed",
+        "seasonlistdatatable--started"
+    }
+    DEFAULT_CSS = """
+    SeasonListDataTable > .seasonlistdatatable--completed {
+        background: rgb(0,154,23);
+    }
+    SeasonListDataTable > .seasonlistdatatable--started {
+        background: rgb(249,101,21);
+    }
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.completed: set[int] = set()
+        self.started: set[int] = set()
+
+    def _get_row_style(self, row_index: int, base_style: Style) -> Style:
+        if row_index in self.completed:
+            return self.get_component_styles("seasonlistdatatable--completed").rich_style
+        if row_index in self.started:
+            return self.get_component_styles("seasonlistdatatable--started").rich_style
+        return super()._get_row_style(row_index, base_style)
+
+    def clear(self, columns: bool = False) -> Self:
+        self.completed = []
+        return super().clear(columns)
+
+
 def remove_duplicates(lst: list) -> list:
     """
     Why this instead of a set you ask ?
@@ -252,10 +311,11 @@ class GuckenApp(App):
 
     # TODO: theme_changed_signal
 
-    def __init__(self, debug: bool, search: str):
+    def __init__(self, debug: bool, search: str, session: ORMSession):
         super().__init__(watch_css=debug)
         self._debug = debug
         self._search = search
+        self.session: ORMSession = session
 
         self.current: Union[list[SearchResult], None] = None
         self.current_info: Union[Series, None] = None
@@ -318,7 +378,7 @@ class GuckenApp(App):
                         id="res_con_2"
                     )
 
-                    yield ClickableDataTable(id="season_list")
+                    yield SeasonListDataTable(id="season_list")
             with TabPane("Settings", id="setting"):  # Settings "⚙"
                 # TODO: dont show unneeded on android
                 with ScrollableContainer(id="settings_container"):
@@ -490,7 +550,7 @@ class GuckenApp(App):
 
         self.query_one("#info", TabPane).set_loading(True)
 
-        table = self.query_one("#season_list", DataTable)
+        table = self.query_one("#season_list", SeasonListDataTable)
         table.cursor_type = "row"
 
         if self.query_one("#update_checker", RadioButton).value is True:
@@ -630,12 +690,12 @@ class GuckenApp(App):
                             inp.action_delete_left()
                         else:
                             await inp.on_event(event)
-            if key == "enter" and self.query_one("#season_list", DataTable).has_focus:
+            if key == "enter" and self.query_one("#season_list", SeasonListDataTable).has_focus:
                 self.play_selected()
 
     @work(exclusive=True)
     async def play_selected(self):
-        dt = self.query_one("#season_list", DataTable)
+        dt = self.query_one("#season_list", SeasonListDataTable)
         # TODO: show loading
         #dt.set_loading(True)
         index = self.app.query_one("#results", ListView).index
@@ -676,9 +736,16 @@ class GuckenApp(App):
         # make sure to reset colum spacing
         table.clear(columns=True)
         table.add_columns("FT", "S", "F", "Title", "Hoster", "Sprache")
+        index = {}
 
         c = 0
         for ep in series.episodes:
+            ep: Episode
+
+            if not index.get(ep.season):
+                index[ep.season] = {}
+            index[ep.season][ep.episode_number] = c
+
             hl = []
             for h in ep.available_hoster:
                 hl.append(hoster.get_key(h))
@@ -697,6 +764,19 @@ class GuckenApp(App):
                 " ".join(ll),
             )
         info_tab.set_loading(False)
+        anime = self.session.query(Anime).filter_by(
+            provider=series_search_result.provider_name,
+            name=series_search_result.name
+        ).first()
+        if anime:
+            watchtimes = self.session.query(Watchtime).filter_by(anime_id=anime.anime_id)
+            _started = set()
+            for watchtime in watchtimes:
+                _started.add(index[watchtime.season][watchtime.episode])
+            table.started = _started
+
+        # table.completed = {0}
+        # table.started = {1}
 
     @work(exclusive=True, thread=True)
     async def update_check(self):
@@ -801,6 +881,16 @@ class GuckenApp(App):
                 args.append("--logfile=" + str(logs_path.joinpath("vlc.log")))
 
         chapters_file = None
+
+        if isinstance(_player, MPVPlayer):
+            anime = get_anime(self.session, series_search_result.provider_name, series_search_result.name)
+            watchtime = self.session.query(Watchtime).filter_by(
+                anime_id=anime.anime_id,
+                episode=episode.episode_number,
+                season=episode.season
+            ).first()
+            if watchtime:
+                args.append(f"--start={seconds_to_hms(int(watchtime.time))}")
 
         # TODO: cache more
         # TODO: Support based on mpv
@@ -926,8 +1016,24 @@ class GuckenApp(App):
                         resume_time = sp[1]
 
             if resume_time:
-                logging.info("Resume: %s", resume_time)
-
+                logging.info("Resume time: %s", resume_time)
+                anime = get_anime(self.session, series_search_result.provider_name, series_search_result.name)
+                existing_watchtime = self.session.query(Watchtime).filter_by(
+                    anime_id=anime.anime_id,
+                    episode=episode.episode_number,
+                    season=episode.season
+                ).first()
+                if existing_watchtime:
+                    existing_watchtime.time = hms_to_seconds(resume_time)
+                else:
+                    watchtime = Watchtime(
+                        anime_id=anime.anime_id,
+                        episode=episode.episode_number,
+                        season=episode.season,
+                        time=hms_to_seconds(resume_time)
+                    )
+                    self.session.add(watchtime)
+                self.session.commit()
             exit_code = process.poll()
 
             if exit_code is not None:
@@ -973,12 +1079,24 @@ exit_quotes = [
 
 
 def main():
+    if len(argv) >= 2:
+        if argv[1] == "alembic":
+            chdir(Path(__file__).parent)
+            alembic_main(prog="gucken alembic", argv=argv[2:])
+            return
+        if argv[1] == "sql":
+            sqlite3_main([str(user_data_path("gucken").joinpath("data.db"))] + argv[2:])
+            return
     parser = argparse.ArgumentParser(
         prog='gucken',
         description="Gucken is a Terminal User Interface which allows you to browse and watch your favorite anime's with style.",
         formatter_class=RichHelpFormatter
     )
-    parser.add_argument("search", nargs='?')
+    subparsers = parser.add_subparsers(dest="command")
+    search_parser = subparsers.add_parser("search")
+    search_parser.add_argument("kw", nargs='?')
+    subparsers.add_parser("alembic")
+    subparsers.add_parser("sql")
     parser.add_argument(
         "--debug", "--dev",
         action="store_true",
@@ -993,14 +1111,11 @@ def main():
     if args.version:
         exit(f"gucken {__version__}")
     if args.debug:
-        logs_path = user_log_path("gucken", ensure_exists=True)
-        logging.basicConfig(
-            filename=logs_path.joinpath("gucken.log"), encoding="utf-8", level=logging.INFO, force=True
-        )
+        setup()
 
     register_atexit(gucken_settings_manager.save)
     print(f"\033]0;Gucken {__version__}\007", end='', flush=True)
-    gucken_app = GuckenApp(debug=args.debug, search=args.search)
+    gucken_app = GuckenApp(debug=args.debug, search=args.kw if hasattr(args, "kw") else None, session=Session())
     gucken_app.run()
     print(choice(exit_quotes))
 
