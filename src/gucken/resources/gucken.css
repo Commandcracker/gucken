@@ -134,3 +134,14 @@ Tab {
     height: auto;
     width: 1fr;
 }
+
+/* * This is a workaround for the horizontal scrollable container
+ * to have a margin at the bottom, so it does not touch the next element.
+ */
+.season-filter {
+    margin-bottom: 1;  /* Abstand nach unten */
+}
+
+ScrollableContainer > Horizontal#res_con_2 {
+    margin-bottom: 1;
+}
