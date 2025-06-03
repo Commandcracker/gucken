@@ -21,7 +21,7 @@ from rich.markup import escape
 from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
-from textual.containers import Center, Container, Horizontal, ScrollableContainer, Vertical
+from textual.containers import Center, Container, Horizontal, ScrollableContainer, Vertical, Grid
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import (
@@ -310,6 +310,7 @@ class GuckenApp(App):
                     )
                 yield Input(id="input", placeholder="Search for a Anime")
                 yield ListView(id="results")
+
             with TabPane("Info", id="info", disabled=True):  # Info "ℹ"
                 with ScrollableContainer(id="res_con"):
                     yield Horizontal(
@@ -317,8 +318,13 @@ class GuckenApp(App):
                         Markdown(id="markdown"),
                         id="res_con_2"
                     )
-
+                    yield Select.from_values(
+                        [],  # Leere Liste zu Beginn
+                        id="season_filter",
+                        prompt="Alle Staffeln"
+                    )
                     yield ClickableDataTable(id="season_list")
+
             with TabPane("Settings", id="setting"):  # Settings "⚙"
                 # TODO: dont show unneeded on android
                 with ScrollableContainer(id="settings_container"):
@@ -382,12 +388,62 @@ class GuckenApp(App):
                         )
         # yield Footer()
         with Center(id="footer"):
-            yield Label("Made by Commandcracker with [red]❤[/red]")
+            yield Label("Made by Commandcracker & FundyJo with [red]❤[/red]")
 
     @on(Input.Changed)
     async def input_changed(self, event: Input.Changed):
         if event.control.id == "input":
             self.lookup_anime(event.value)
+
+    @on(Select.Changed)
+    def on_season_filter_changed(self, event: Select.Changed) -> None:
+        if event.control.id == "season_filter":
+            table = self.query_one("#season_list", DataTable)
+            if not self.current_info:
+                return
+
+            table.clear(columns=True)
+            table.add_columns("FT", "S", "F", "Title", "Hoster", "Sprache")
+
+            # Liste der gefilterten Episoden speichern
+            self.filtered_episodes = []
+
+            # Temporäre Listen für die Sortierung
+            regular_episodes = []
+            movie_episodes = []
+
+            # Episoden in reguläre und Filme aufteilen
+            for ep in self.current_info.episodes:
+                if event.value == Select.BLANK or str(ep.season) == event.value:
+                    if str(ep.season) == "0":
+                        movie_episodes.append(ep)
+                    else:
+                        regular_episodes.append(ep)
+
+            # Zusammenführen der Listen: erst reguläre Episoden, dann Filme
+            sorted_episodes = regular_episodes + movie_episodes
+            self.filtered_episodes = sorted_episodes
+
+            # Anzeigen der sortierten Episoden
+            c = 0
+            for ep in sorted_episodes:
+                hl = []
+                for h in ep.available_hoster:
+                    hl.append(hoster.get_key(h))
+
+                ll = []
+                for l in sort_favorite_lang(ep.available_language, self.language):
+                    ll.append(l.name)
+
+                c += 1
+                table.add_row(
+                    c,
+                    "F" if str(ep.season) == "0" else ep.season,
+                    ep.episode_number,
+                    escape(ep.title),
+                    " ".join(sort_favorite_hoster_by_key(hl, self.hoster)),
+                    " ".join(ll),
+                )
 
     @on(SortableTable.SortChanged)
     async def sortableTable_sortChanged(
@@ -637,13 +693,29 @@ class GuckenApp(App):
     async def play_selected(self):
         dt = self.query_one("#season_list", DataTable)
         # TODO: show loading
-        #dt.set_loading(True)
+        # dt.set_loading(True)
         index = self.app.query_one("#results", ListView).index
         series_search_result = self.current[index]
+
+        # Verwende filtered_episodes falls vorhanden, sonst current_info.episodes
+        if hasattr(self, 'filtered_episodes') and self.filtered_episodes:
+            episodes_to_use = self.filtered_episodes
+            # cursor_row entspricht direkt dem Index in der gefilterten Liste
+            selected_index = dt.cursor_row
+        else:
+            episodes_to_use = self.current_info.episodes
+            # Finde die entsprechende Episode basierend auf der Tabellenzeile
+            selected_row = dt.get_row_at(dt.cursor_row)
+            # Suche die passende Episode anhand der angezeigten Informationen
+            selected_index = next((i for i, ep in enumerate(episodes_to_use)
+                                   if
+                                   (str(ep.season) if ep.season != 0 else "F") == str(selected_row[1])  # Prüfe Staffel
+                                   and str(ep.episode_number) == str(selected_row[2])), 0)  # Prüfe Episodennummer
+
         self.play(
             series_search_result=series_search_result,
-            episodes=self.current_info.episodes,
-            index=dt.cursor_row,
+            episodes=episodes_to_use,
+            index=selected_index,
         )
         #dt.set_loading(False)
 
@@ -665,6 +737,22 @@ class GuckenApp(App):
 
         series = await self.get_series(series_search_result)
         self.current_info = series
+
+        season_filter = self.query_one("#season_filter", Select)
+        unique_seasons = sorted(set(ep.season for ep in series.episodes))
+
+        # Sortiere die Staffeln so, dass Filme (Staffel 0) am Ende erscheint
+        regular_seasons = [s for s in unique_seasons if s != 0]
+        movies_season = [s for s in unique_seasons if s == 0]
+        sorted_seasons = regular_seasons + movies_season
+
+        season_filter_options = []
+        for season in sorted_seasons:
+            label = "Filme" if season == 0 else f"Staffel {season}"
+            season_filter_options.append((label, str(season)))
+        season_filter.set_options(season_filter_options)
+        season_filter.value = Select.BLANK
+
         await md.update(series.to_markdown())
 
         if gucken_settings_manager.settings["settings"]["image_display"]:
@@ -677,8 +765,25 @@ class GuckenApp(App):
         table.clear(columns=True)
         table.add_columns("FT", "S", "F", "Title", "Hoster", "Sprache")
 
-        c = 0
+        # Sortiere die Episoden entsprechend
+
+        # Sortiere die Episoden entsprechend der gewünschten Reihenfolge
+        sorted_episodes = []
+        # Zuerst Specials (S)
         for ep in series.episodes:
+            if ep.season == "S":
+                sorted_episodes.append(ep)
+        # Dann numerische Staffeln
+        for ep in series.episodes:
+            if isinstance(ep.season, (int, str)) and ep.season not in ["S", 0]:
+                sorted_episodes.append(ep)
+        # Zum Schluss Filme (F)
+        for ep in series.episodes:
+            if ep.season == 0:
+                sorted_episodes.append(ep)
+
+        c = 0
+        for ep in sorted_episodes:
             hl = []
             for h in ep.available_hoster:
                 hl.append(hoster.get_key(h))
@@ -688,9 +793,17 @@ class GuckenApp(App):
                 ll.append(l.name)
 
             c += 1
+            # Zeige die Staffeln in der gewünschten Reihenfolge
+            if ep.season == "S":
+                season_display = "S"
+            elif ep.season == 0:
+                season_display = "F"
+            else:
+                season_display = ep.season
+
             table.add_row(
                 c,
-                ep.season,
+                season_display,
                 ep.episode_number,
                 escape(ep.title),
                 " ".join(sort_favorite_hoster_by_key(hl, self.hoster)),

@@ -207,9 +207,11 @@ class AniWorldProvider(Provider):
                 .find_all("a")
             )
             count = 0
+
             for staffel in staffeln:
-                # TODO: Filme
-                if staffel.text != "Filme":
+                if staffel.text == "Filme":
+                    funcs.append(get_episodes_from_url(0, search_result.url))  # Filme als Staffel 1 behandeln
+                else:
                     count += 1
                     if count > 1:
                         funcs.append(get_episodes_from_url(count, search_result.url))
