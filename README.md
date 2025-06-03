@@ -109,7 +109,6 @@ termux-setup-storage
 List of supported Anime sites
 
 - [x] [AniWorld.to] & [SerienStream.to]
-  - [ ] Filme
 - [ ] [bs.to](https://bs.to/)
 - [ ] [www3.streamcloud.info](https://www3.streamcloud.info/)
 - [ ] [www.crunchyroll.com](https://www.crunchyroll.com)
