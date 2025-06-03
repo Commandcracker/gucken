@@ -388,7 +388,7 @@ class GuckenApp(App):
                         )
         # yield Footer()
         with Center(id="footer"):
-            yield Label("Made by Commandcracker & FundyJo with [red]❤[/red]")
+            yield Label("Made by Commandcracker with [red]❤[/red]")
 
     @on(Input.Changed)
     async def input_changed(self, event: Input.Changed):
