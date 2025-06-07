@@ -888,7 +888,6 @@ class GuckenApp(App):
         season_filter = self.query_one("#season_filter", Select)
         unique_seasons = sorted(set(ep.season for ep in series.episodes))
 
-        # Sortiere die Staffeln so, dass Filme (Staffel 0) am Ende erscheint
         regular_seasons = [s for s in unique_seasons if s != 0]
         movies_season = [s for s in unique_seasons if s == 0]
         sorted_seasons = regular_seasons + movies_season
@@ -908,45 +907,39 @@ class GuckenApp(App):
                 response = await client.get(series.cover)
                 img.image = BytesIO(response.content)
 
-        # make sure to reset colum spacing
         table.clear(columns=True)
         table.add_columns("FT", "S", "F", "Title", "Hoster", "Sprache")
 
-        # Sortiere die Episoden entsprechend
-
-        # Sortiere die Episoden entsprechend der gewünschten Reihenfolge
         sorted_episodes = []
-        # Zuerst Specials (S)
         for ep in series.episodes:
             if ep.season == "S":
                 sorted_episodes.append(ep)
-        # Dann numerische Staffeln
         for ep in series.episodes:
             if isinstance(ep.season, (int, str)) and ep.season not in ["S", 0]:
                 sorted_episodes.append(ep)
-        # Zum Schluss Filme (F)
         for ep in series.episodes:
             if ep.season == 0:
                 sorted_episodes.append(ep)
 
         c = 0
         for ep in sorted_episodes:
-            hl = []
-            for h in ep.available_hoster:
-                hl.append(hoster.get_key(h))
-
-            ll = []
-            for l in sort_favorite_lang(ep.available_language, self.language):
-                ll.append(l.name)
-
+            hl = [hoster.get_key(h) for h in ep.available_hoster]
+            ll = [l.name for l in sort_favorite_lang(ep.available_language, self.language)]
             c += 1
-            # Zeige die Staffeln in der gewünschten Reihenfolge
             if ep.season == "S":
                 season_display = "S"
             elif ep.season == 0:
                 season_display = "F"
             else:
                 season_display = ep.season
+
+            # Prüfe, ob die Episode gesehen wurde
+            watched = is_episode_watched(
+                series_search_result.name,
+                ep.season,
+                ep.episode_number,
+                series_search_result.provider_name
+            )
 
             table.add_row(
                 c,
@@ -956,7 +949,7 @@ class GuckenApp(App):
                 " ".join(sort_favorite_hoster_by_key(hl, self.hoster)),
                 " ".join(ll),
             )
-        info_tab.set_loading(False)
+            info_tab.set_loading(False)
 
     @on(Button.Pressed)
     def on_watchlist_btn(self, event):
