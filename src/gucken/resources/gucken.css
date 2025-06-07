@@ -206,3 +206,14 @@ ScrollableContainer > Horizontal#res_con_2 {
     background: #3498db;
     color: #ffffff;
 }
+
+.season-filter {
+    margin-bottom: 2;  /* Erhöhe den Abstand nach unten */
+}
+
+#watchlist_btn {
+    width: auto;
+    min-width: 20; /* gleiche Breite wie das Bild, falls das Bild 20 breit ist */
+    margin: 1 0;
+    content-align: center middle;
+}
