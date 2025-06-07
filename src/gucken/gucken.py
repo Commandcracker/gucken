@@ -62,7 +62,48 @@ from .update import check
 from .utils import detect_player, is_android, set_default_vlc_interface_cfg, get_vlc_intf_user_path
 from .networking import AsyncClient
 from . import __version__
+import sqlite3
 
+WATCHLIST_DB = user_config_path("gucken").joinpath("watchlist.db")
+
+def init_watchlist_db():
+    conn = sqlite3.connect(WATCHLIST_DB)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS watchlist
+                 (name TEXT, provider TEXT, PRIMARY KEY (name, provider))''')
+    conn.commit()
+    conn.close()
+
+def add_to_watchlist(series: SearchResult):
+    conn = sqlite3.connect(WATCHLIST_DB)
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO watchlist VALUES (?, ?)",
+              (series.name, series.provider_name))
+    conn.commit()
+    conn.close()
+
+def remove_from_watchlist(series: SearchResult):
+    conn = sqlite3.connect(WATCHLIST_DB)
+    c = conn.cursor()
+    c.execute("DELETE FROM watchlist WHERE name=? AND provider=?", (series.name, series.provider_name))
+    conn.commit()
+    conn.close()
+
+def is_in_watchlist(series: SearchResult) -> bool:
+    conn = sqlite3.connect(WATCHLIST_DB)
+    c = conn.cursor()
+    c.execute("SELECT 1 FROM watchlist WHERE name=? AND provider=?", (series.name, series.provider_name))
+    result = c.fetchone()
+    conn.close()
+    return result is not None
+
+def get_watchlist() -> list:
+    conn = sqlite3.connect(WATCHLIST_DB)
+    c = conn.cursor()
+    c.execute("SELECT name, provider FROM watchlist")
+    rows = c.fetchall()
+    conn.close()
+    return rows  # [(name, provider_name), ...]
 
 def sort_favorite_lang(
         language_list: List[Language], pio_list: List[str]
@@ -250,6 +291,7 @@ class GuckenApp(App):
         Binding("q", "quit", "Quit", show=False, priority=False),
     ]
 
+    init_watchlist_db()
     # TODO: theme_changed_signal
 
     def __init__(self, debug: bool, search: str):
@@ -318,13 +360,19 @@ class GuckenApp(App):
                         Markdown(id="markdown"),
                         id="res_con_2"
                     )
+                    yield Button(
+                        "Zur Watchlist hinzufügen",
+                        id="watchlist_btn",
+                        variant="success"
+                    )
                     yield Select.from_values(
                         [],  # Leere Liste zu Beginn
                         id="season_filter",
                         prompt="Alle Staffeln"
                     )
                     yield ClickableDataTable(id="season_list")
-
+            with TabPane("Watchlist", id="watchlist"):
+                yield ListView(id="watchlist_view")
             with TabPane("Settings", id="setting"):  # Settings "⚙"
                 # TODO: dont show unneeded on android
                 with ScrollableContainer(id="settings_container"):
@@ -725,9 +773,18 @@ class GuckenApp(App):
 
     @work(exclusive=True)
     async def open_info(self) -> None:
+        watchlist_btn = self.query_one("#watchlist_btn", Button)
         series_search_result: SearchResult = self.current[
             self.app.query_one("#results", ListView).index
         ]
+
+        if is_in_watchlist(series_search_result):
+            watchlist_btn.label = "Aus Watchlist entfernen"
+            watchlist_btn.variant = "error"
+        else:
+            watchlist_btn.label = "Zur Watchlist hinzufügen"
+            watchlist_btn.variant = "success"
+
         info_tab = self.query_one("#info", TabPane)
         info_tab.disabled = False
         info_tab.set_loading(True)
@@ -810,6 +867,45 @@ class GuckenApp(App):
                 " ".join(ll),
             )
         info_tab.set_loading(False)
+
+    @on(Button.Pressed)
+    def on_watchlist_btn(self, event):
+        if event.button.id == "watchlist_btn":
+            index = self.app.query_one("#results", ListView).index
+            series = self.current[index]
+            if is_in_watchlist(series):
+                remove_from_watchlist(series)
+                event.button.label = "Zur Watchlist hinzufügen"
+                event.button.variant = "success"
+            else:
+                add_to_watchlist(series)
+                event.button.label = "Aus Watchlist entfernen"
+                event.button.variant = "error"
+            self.update_watchlist_view()
+
+    def update_watchlist_view(self):
+        watchlist_view = self.query_one("#watchlist_view", ListView)
+        watchlist_view.clear()
+        for name, provider_name in get_watchlist():
+            item = ClickableListItem(Markdown(f"##### {name} [{provider_name}]"))
+            item.anime_name = name
+            item.anime_provider_name = provider_name
+            watchlist_view.append(item)
+
+    @on(ListView.Selected, "#watchlist_view")
+    async def on_watchlist_selected(self, event):
+        item = event.item
+        name = getattr(item, "anime_name", None)
+        provider_name = getattr(item, "anime_provider_name", None)
+        if name and provider_name:
+            results = await gather(self.aniworld_search(name), self.serienstream_search(name))
+            for result_list in results:
+                if result_list:
+                    for series in result_list:
+                        if series.name == name and series.provider_name == provider_name:
+                            self.current = [series]
+                            self.call_later(lambda: self.open_info())
+                            return
 
     @work(exclusive=True, thread=True)
     async def update_check(self):

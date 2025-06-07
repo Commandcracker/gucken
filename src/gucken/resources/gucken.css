@@ -135,6 +135,14 @@ Tab {
     width: 1fr;
 }
 
+.watchlist-button {
+    width: 100%;
+    height: 3;
+    margin: 1;
+    content-align: center middle;
+}
+
+
 /* * This is a workaround for the horizontal scrollable container
  * to have a margin at the bottom, so it does not touch the next element.
  */
@@ -144,4 +152,57 @@ Tab {
 
 ScrollableContainer > Horizontal#res_con_2 {
     margin-bottom: 1;
+}
+
+#watchlist-main-container {
+    width: 100%;
+    height: 100%;
+    padding: 1;
+    background: #1e1e1e;
+}
+
+#watchlist-title {
+    text-align: center;
+    background: #2c3e50;
+    color: #ffffff;
+    padding: 1;
+    border-bottom: solid #3498db;
+}
+
+#watchlist-content {
+    height: 100%;
+    margin: 1;
+}
+
+#table-container {
+    width: 100%;
+    height: 100%;
+    border: solid #333333;
+    background: #252525;
+}
+
+.watchlist-table {
+    width: 100%;
+    height: 100%;
+    color: #ffffff;
+}
+
+.watchlist-table > .datatable--header {
+    background: #2c3e50;
+    padding: 1;
+    text-style: bold;
+}
+
+.watchlist-table > .datatable--row {
+    padding: 1;
+    border-bottom: solid #333333;
+}
+
+.watchlist-table > .datatable--row:hover {
+    background: #2c3e50;
+}
+
+.watchlist-table > .datatable--row-selected {
+    background: #3498db;
+    color: #ffffff;
 }
