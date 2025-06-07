@@ -65,12 +65,75 @@ from . import __version__
 import sqlite3
 
 WATCHLIST_DB = user_config_path("gucken").joinpath("watchlist.db")
+WATCHTIME_DB = user_config_path("gucken").joinpath("watchtime.db")
+WATCHED_EPISODES_DB = user_config_path("gucken").joinpath("watched_episodes.db")
+
+def init_watched_episodes_db():
+    conn = sqlite3.connect(WATCHED_EPISODES_DB)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS watched_episodes
+                 (series TEXT, season INTEGER, episode INTEGER, provider TEXT,
+                  PRIMARY KEY (series, season, episode, provider))''')
+    conn.commit()
+    conn.close()
+
+def mark_episode_watched(series, season, episode, provider):
+    conn = sqlite3.connect(WATCHED_EPISODES_DB)
+    c = conn.cursor()
+    c.execute('''INSERT OR REPLACE INTO watched_episodes (series, season, episode, provider)
+                 VALUES (?, ?, ?, ?)''', (series, season, episode, provider))
+    conn.commit()
+    conn.close()
+
+
+
+def is_episode_watched(series, season, episode, provider):
+    conn = sqlite3.connect(WATCHED_EPISODES_DB)
+    c = conn.cursor()
+    c.execute('''SELECT 1 FROM watched_episodes WHERE series=? AND season=? AND episode=? AND provider=?''',
+              (series, season, episode, provider))
+    result = c.fetchone()
+    conn.close()
+    return result is not None
+
+def init_watchtime_db():
+    conn = sqlite3.connect(WATCHTIME_DB)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS watchtime
+                 (series TEXT, season INTEGER, episode INTEGER, provider TEXT, time TEXT,
+                  PRIMARY KEY (series, season, episode, provider))''')
+    conn.commit()
+    conn.close()
+
+def save_watchtime(series, season, episode, provider, time_str):
+    conn = sqlite3.connect(WATCHTIME_DB)
+    c = conn.cursor()
+    c.execute('''INSERT OR REPLACE INTO watchtime (series, season, episode, provider, time)
+                 VALUES (?, ?, ?, ?, ?)''', (series, season, episode, provider, time_str))
+    conn.commit()
+    conn.close()
 
 def init_watchlist_db():
     conn = sqlite3.connect(WATCHLIST_DB)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS watchlist
                  (name TEXT, provider TEXT, PRIMARY KEY (name, provider))''')
+    conn.commit()
+    conn.close()
+
+def get_unfinished_watchtime():
+    conn = sqlite3.connect(WATCHTIME_DB)
+    c = conn.cursor()
+    c.execute('SELECT series, season, episode, provider, time FROM watchtime')
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def remove_watchtime(series, season, episode, provider):
+    conn = sqlite3.connect(WATCHTIME_DB)
+    c = conn.cursor()
+    c.execute('DELETE FROM watchtime WHERE series=? AND season=? AND episode=? AND provider=?',
+              (series, season, episode, provider))
     conn.commit()
     conn.close()
 
@@ -280,6 +343,28 @@ def move_item(lst: list, from_index: int, to_index: int) -> list:
 
 CLIENT_ID = "1238219157464416266"
 
+class ContinueWatchScreen(ModalScreen):
+    def __init__(self, question, callback):
+        super().__init__()
+        self.question = question
+        self.callback = callback
+
+    def compose(self):
+        with Container():
+            yield Label(self.question)
+            with Horizontal():
+                yield Button("Nein", id="no")
+                yield Button("Ja", id="yes")
+
+    @on(Button.Pressed)
+    def handle_button(self, event):
+        if event.button.id == "yes":
+            self.dismiss(True)
+        else:
+            self.dismiss(False)
+
+    def on_dismiss(self, result):
+        self.callback(result)
 
 class GuckenApp(App):
     TITLE = f"Gucken {__version__}"
@@ -292,6 +377,9 @@ class GuckenApp(App):
     ]
 
     init_watchlist_db()
+    init_watchtime_db()
+    init_watched_episodes_db()
+
     # TODO: theme_changed_signal
 
     def __init__(self, debug: bool, search: str):
@@ -303,6 +391,10 @@ class GuckenApp(App):
         self.current_info: Union[Series, None] = None
         self.detected_player = detect_player()
         self.RPC: Union[AioPresence, None] = None
+        self.unfinished = get_unfinished_watchtime()
+
+        if self.unfinished:
+            self.ask_next_unfinished()
 
         language: list = gucken_settings_manager.settings["settings"]["language"]
         language = remove_none_lang_keys(language)
@@ -325,6 +417,22 @@ class GuckenApp(App):
             _hoster
         )
         self.hoster = gucken_settings_manager.settings["settings"]["hoster"]
+
+    def ask_next_unfinished(self, i=0):
+        if i >= len(self.unfinished):
+            return
+        series, season, episode, provider, time_str = self.unfinished[i]
+        question = f"Du hast '{series}' S{season}E{episode} [{provider}] noch nicht zu Ende geschaut. Weiterschauen ab {time_str}?"
+
+        def on_answer(result):
+            if result:
+                # Hier Wiedergabe starten, z.B.:
+                # self.play_from_watchtime(series, season, episode, provider, time_str)
+                pass
+            else:
+                self.ask_next_unfinished(i + 1)
+
+        self.push_screen(ContinueWatchScreen(question, on_answer))
 
     def compose(self) -> ComposeResult:
         settings = gucken_settings_manager.settings["settings"]
@@ -935,19 +1043,18 @@ class GuckenApp(App):
             )
             return
 
-        if p != "AutomaticPlayer":
-            if not _player.is_available():
-                self.notify(
-                    "Your configured player has not been found!",
-                    title="Player not found",
-                    severity="error",
-                )
-                return
+        if p != "AutomaticPlayer" and not _player.is_available():
+            self.notify(
+                "Your configured player has not been found!",
+                title="Player not found",
+                severity="error",
+            )
+            return
 
         episode: Episode = episodes[index]
         processed_hoster = await episode.process_hoster()
 
-        if len(episode.available_language) <= 0:
+        if not episode.available_language:
             self.notify(
                 "The episode you are trying to watch has no stream available.",
                 title="No stream available",
@@ -958,8 +1065,14 @@ class GuckenApp(App):
         lang = sort_favorite_lang(episode.available_language, self.language)[0]
         sorted_hoster = sort_favorite_hoster(processed_hoster.get(lang), self.hoster)
         direct_link = await get_working_direct_link(sorted_hoster, self)
+        if not direct_link:
+            self.notify(
+                "No working stream found.",
+                title="No stream available",
+                severity="error",
+            )
+            return
 
-        # TODO: check for header support
         syncplay = gucken_settings_manager.settings["settings"]["syncplay"]
         fullscreen = gucken_settings_manager.settings["settings"]["fullscreen"]
 
@@ -969,51 +1082,31 @@ class GuckenApp(App):
         if self.RPC and self.RPC.sock_writer:
             async def update():
                 await self.RPC.update(
-                    # state="00:20:00 / 00:25:00 57% complete",
                     details=title[:128],
                     large_text=title,
                     large_image=series_search_result.cover,
-                    # small_image as playing or stopped ?
-                    # small_image="https://jooinn.com/images/lonely-tree-reflection-3.jpg",
-                    # small_text="ff 15",
-                    # start=time.time(), # for paused
-                    # end=time.time() + timedelta(minutes=20).seconds   # for time left
                 )
 
             self.app.call_later(update)
 
-        # Picture-in-Picture mode
         if gucken_settings_manager.settings["settings"]["pip"]:
             if isinstance(_player, MPVPlayer):
-                args.append("--ontop")
-                args.append("--no-border")
-                args.append("--snap-window")
-
+                args += ["--ontop", "--no-border", "--snap-window"]
             if isinstance(_player, VLCPlayer):
-                args.append("--video-on-top")
-                args.append("--qt-minimal-view")
-                args.append("--no-video-deco")
+                args += ["--video-on-top", "--qt-minimal-view", "--no-video-deco"]
 
-        if direct_link.force_hls:
-            # TODO: make work for vlc and others
-            if isinstance(_player, MPVPlayer):
-                args.append("--demuxer=lavf")
-                args.append("--demuxer-lavf-format=hls")
+        if direct_link.force_hls and isinstance(_player, MPVPlayer):
+            args += ["--demuxer=lavf", "--demuxer-lavf-format=hls"]
 
         if self._debug:
             logs_path = user_log_path("gucken", ensure_exists=True)
             if isinstance(_player, MPVPlayer):
                 args.append("--log-file=" + str(logs_path.joinpath("mpv.log")))
             elif isinstance(_player, VLCPlayer):
-                args.append("--file-logging")
-                args.append("--log-verbose=3")
-                args.append("--logfile=" + str(logs_path.joinpath("vlc.log")))
+                args += ["--file-logging", "--log-verbose=3", "--logfile=" + str(logs_path.joinpath("vlc.log"))]
 
         chapters_file = None
 
-        # TODO: cache more
-        # TODO: Support based on mpv
-        # TODO: recover start --start=00:56
         if isinstance(_player, MPVPlayer) or isinstance(_player, VLCPlayer):
             ani_skip_opening = gucken_settings_manager.settings["settings"]["ani_skip"]["skip_opening"]
             ani_skip_ending = gucken_settings_manager.settings["settings"]["ani_skip"]["skip_ending"]
@@ -1036,53 +1129,40 @@ class GuckenApp(App):
 
                             register_atexit(delete_chapters_file)
                             args.append(f"--chapters-file={chapters_file.name}")
-
                         script_opts = []
                         if ani_skip_opening:
-                            script_opts.append(f"skip-op_start={timings.op_start}")
-                            script_opts.append(f"skip-op_end={timings.op_end}")
+                            script_opts += [f"skip-op_start={timings.op_start}", f"skip-op_end={timings.op_end}"]
                         if ani_skip_ending:
-                            script_opts.append(f"skip-ed_start={timings.ed_start}")
-                            script_opts.append(f"skip-ed_end={timings.ed_end}")
-                        if len(script_opts) > 0:
+                            script_opts += [f"skip-ed_start={timings.ed_start}", f"skip-ed_end={timings.ed_end}"]
+                        if script_opts:
                             args.append(f"--script-opts={','.join(script_opts)}")
-
                         args.append(
                             "--scripts-append=" + str(Path(__file__).parent.joinpath("resources", "mpv_gucken.lua")))
-
                     if isinstance(_player, VLCPlayer):
                         prepend_data = []
                         if ani_skip_opening:
-                            prepend_data.append(set_default_vlc_interface_cfg("op_start", timings.op_start))
-                            prepend_data.append(set_default_vlc_interface_cfg("op_end", timings.op_end))
+                            prepend_data += [set_default_vlc_interface_cfg("op_start", timings.op_start),
+                                             set_default_vlc_interface_cfg("op_end", timings.op_end)]
                         if ani_skip_ending:
-                            prepend_data.append(set_default_vlc_interface_cfg("ed_start", timings.ed_start))
-                            prepend_data.append(set_default_vlc_interface_cfg("ed_end", timings.ed_end))
-
+                            prepend_data += [set_default_vlc_interface_cfg("ed_start", timings.ed_start),
+                                             set_default_vlc_interface_cfg("ed_end", timings.ed_end)]
                         vlc_intf_user_path = get_vlc_intf_user_path(_player.executable).vlc_intf_user_path
                         Path(vlc_intf_user_path).mkdir(mode=0o755, parents=True, exist_ok=True)
-
                         vlc_skip_plugin = Path(__file__).parent.joinpath("resources", "vlc_gucken.lua")
                         copy_to = join(vlc_intf_user_path, "vlc_gucken.lua")
-
                         with open(vlc_skip_plugin, 'r') as f:
                             original_content = f.read()
-
                         with open(copy_to, 'w') as f:
                             f.write("\n".join(prepend_data) + original_content)
-
                         args.append("--control=luaintf{intf=vlc_gucken}")
 
         if syncplay:
-            # TODO: make work with flatpak
-            # TODO: make work with android
             syncplay_path = None
             if which("syncplay"):
                 syncplay_path = "syncplay"
-            if not syncplay_path:
-                if os_name == "nt":
-                    if which(r"C:\Program Files (x86)\Syncplay\Syncplay.exe"):
-                        syncplay_path = r"C:\Program Files (x86)\Syncplay\Syncplay.exe"
+            if not syncplay_path and os_name == "nt":
+                if which(r"C:\Program Files (x86)\Syncplay\Syncplay.exe"):
+                    syncplay_path = r"C:\Program Files (x86)\Syncplay\Syncplay.exe"
             if not syncplay_path:
                 self.notify(
                     "Syncplay not found",
@@ -1090,20 +1170,10 @@ class GuckenApp(App):
                     severity="error",
                 )
             else:
-                # TODO: add mpv.net, IINA, MPC-BE, MPC-HE, celluloid ?
                 if isinstance(_player, MPVPlayer) or isinstance(_player, VLCPlayer):
                     player_path = which(args[0])
                     url = args[1]
-                    args.pop(0)
-                    args.pop(0)
-                    args = [
-                               syncplay_path,
-                               "--player-path",
-                               player_path,
-                               # "--debug",
-                               url,
-                               "--",
-                           ] + args
+                    args = [syncplay_path, "--player-path", player_path, url, "--"] + args[2:]
                 else:
                     self.notify(
                         "Your player is not supported by Syncplay",
@@ -1112,64 +1182,73 @@ class GuckenApp(App):
                     )
 
         logging.info("Running: %s", args)
-        # TODO: detach on linux
-        # multiprocessing
-        # child_pid = os.fork()
-        # if child_pid == 0:
         process = Popen(args, stderr=PIPE, stdout=DEVNULL, stdin=DEVNULL)
-        while not self.app._exit:
-            sleep(0.1)
+        resume_time = None
 
-            resume_time = None
-
-            # only if mpv WIP
+        try:
             while not self.app._exit:
-                output = process.stderr.readline()
+                sleep(0.1)
                 if process.poll() is not None:
                     break
+                output = process.stderr.readline()
                 if output:
-                    out_s = output.strip().decode()
-                    # AV: 00:11:57 / 00:24:38 (49%) A-V:  0.000 Cache: 89s/22MB
+                    out_s = output.strip().decode(errors="ignore")
                     if out_s.startswith("AV:"):
                         sp = out_s.split(" ")
-                        resume_time = sp[1]
+                        if len(sp) > 1:
+                            resume_time = sp[1]  # Format: HH:MM:SS
 
-            if resume_time:
-                logging.info("Resume: %s", resume_time)
-
-            exit_code = process.poll()
-
-            if exit_code is not None:
-                if chapters_file:
-                    try:
-                        remove(chapters_file.name)
-                    except FileNotFoundError:
-                        pass
-                if self.RPC and self.RPC.sock_writer:
-                    self.app.call_later(self.RPC.clear)
-
-                async def push_next_screen():
-                    async def play_next(should_next):
-                        if should_next:
-                            self.play(
-                                series_search_result,
-                                episodes,
-                                index + 1,
-                            )
-
-                    await self.app.push_screen(
-                        Next("Playing next episode in", no_time=is_android),
-                        callback=play_next,
-                    )
-
-                autoplay = gucken_settings_manager.settings["settings"]["autoplay"]["enabled"]
-                if not len(episodes) <= index + 1:
-                    if autoplay is True:
-                        self.app.call_later(push_next_screen)
-                else:
-                    # TODO: ask to mark as completed
+            if resume_time is None or resume_time in ("00:00:00", "0:00:00"):
+                remove_watchtime(
+                    series_search_result.name,
+                    episode.season,
+                    episode.episode_number,
+                    series_search_result.provider_name
+                )
+                mark_episode_watched(
+                    series_search_result.name,
+                    episode.season,
+                    episode.episode_number,
+                    series_search_result.provider_name
+                )
+                logging.info("Episode als gesehen markiert und Watchtime entfernt.")
+            else:
+                save_watchtime(
+                    series_search_result.name,
+                    episode.season,
+                    episode.episode_number,
+                    series_search_result.provider_name,
+                    resume_time
+                )
+                logging.info("Resume-Time gespeichert: %s", resume_time)
+        finally:
+            if chapters_file:
+                try:
+                    remove(chapters_file.name)
+                except FileNotFoundError:
                     pass
-                return
+            if self.RPC and self.RPC.sock_writer:
+                self.app.call_later(self.RPC.clear)
+
+        exit_code = process.poll()
+        if exit_code is not None:
+            async def push_next_screen():
+                async def play_next(should_next):
+                    if should_next:
+                        self.play(
+                            series_search_result,
+                            episodes,
+                            index + 1,
+                        )
+
+                await self.app.push_screen(
+                    Next("Playing next episode in", no_time=is_android),
+                    callback=play_next,
+                )
+
+            autoplay = gucken_settings_manager.settings["settings"]["autoplay"]["enabled"]
+            if len(episodes) > index + 1 and autoplay is True:
+                self.app.call_later(push_next_screen)
 
 
 exit_quotes = [
