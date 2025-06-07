@@ -1183,6 +1183,10 @@ class GuckenApp(App):
 
         logging.info("Running: %s", args)
         process = Popen(args, stderr=PIPE, stdout=DEVNULL, stdin=DEVNULL)
+        while not self.app._exit:
+            sleep(0.1)
+
+            resume_time = None
         resume_time = None
 
         try:
