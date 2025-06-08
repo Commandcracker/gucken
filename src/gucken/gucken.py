@@ -866,6 +866,10 @@ class GuckenApp(App):
     @work(exclusive=True)
     async def open_info(self) -> None:
         watchlist_btn = self.query_one("#watchlist_btn", Button)
+        index = self.app.query_one("#results", ListView).index
+        if index is None or not self.current or index >= len(self.current):
+            return
+
         series_search_result: SearchResult = self.current[
             self.app.query_one("#results", ListView).index
         ]
