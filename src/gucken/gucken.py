@@ -987,7 +987,13 @@ class GuckenApp(App):
     def on_watchlist_btn(self, event):
         if event.button.id == "watchlist_btn":
             index = self.app.query_one("#results", ListView).index
-            series = self.current[index]
+            if index is None:
+                # Fallback: erstes Element aus self.current verwenden
+                if not self.current:
+                    return
+                series = self.current[0]
+            else:
+                series = self.current[index]
             if is_in_watchlist(series):
                 remove_from_watchlist(series)
                 event.button.label = "Zur Watchlist hinzufügen"
