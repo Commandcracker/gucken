@@ -864,16 +864,41 @@ class GuckenApp(App):
         return await series_search_result.get_series()
 
     @work(exclusive=True)
-    async def open_info(self) -> None:
+    async def open_info(self, name=None, provider=None) -> None:
         watchlist_btn = self.query_one("#watchlist_btn", Button)
-        index = self.app.query_one("#results", ListView).index
-        if index is None or not self.current or index >= len(self.current):
-            return
 
-        series_search_result: SearchResult = self.current[
-            index
-        ]
+        # Falls name und provider übergeben werden, suche das passende SearchResult
+        if name and provider:
+            # Suche in self.current
+            series_search_result = None
+            if self.current:
+                for s in self.current:
+                    if s.name == name and s.provider_name == provider:
+                        series_search_result = s
+                        break
+            # Falls nicht gefunden, suche per Provider
+            if not series_search_result:
+                results = await gather(self.aniworld_search(name), self.serienstream_search(name))
+                for result_list in results:
+                    if result_list:
+                        for s in result_list:
+                            if s.name == name and s.provider_name == provider:
+                                series_search_result = s
+                                break
+                    if series_search_result:
+                        break
+            if not series_search_result:
+                return
+            # Setze self.current auf das gefundene Ergebnis, damit alles wie gewohnt funktioniert
+            self.current = [series_search_result]
+            index = 0
+        else:
+            index = self.app.query_one("#results", ListView).index
+            if index is None or not self.current or index >= len(self.current):
+                return
+            series_search_result = self.current[index]
 
+        # Rest wie gehabt ...
         if is_in_watchlist(series_search_result):
             watchlist_btn.label = "Aus Watchlist entfernen"
             watchlist_btn.variant = "error"
@@ -939,7 +964,6 @@ class GuckenApp(App):
             else:
                 season_display = ep.season
 
-            # Prüfe, ob die Episode gesehen wurde
             watched = is_episode_watched(
                 series_search_result.name,
                 ep.season,
@@ -993,7 +1017,7 @@ class GuckenApp(App):
                     for series in result_list:
                         if series.name == name and series.provider_name == provider_name:
                             self.current = [series]
-                            self.call_later(lambda: self.open_info())
+                            self.call_later(lambda: self.open_info(name, provider_name))
                             return
 
     @work(exclusive=True, thread=True)
