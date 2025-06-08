@@ -896,7 +896,9 @@ class GuckenApp(App):
             index = self.app.query_one("#results", ListView).index
             if index is None or not self.current or index >= len(self.current):
                 return
-            series_search_result = self.current[index]
+            series_search_result: SearchResult = self.current[
+                self.app.query_one("#results", ListView).index
+            ]
 
         # Rest wie gehabt ...
         if is_in_watchlist(series_search_result):
