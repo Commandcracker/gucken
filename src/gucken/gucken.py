@@ -658,6 +658,8 @@ class GuckenApp(App):
     async def on_mount(self) -> None:
         self.theme = getenv("TEXTUAL_THEME") or gucken_settings_manager.settings["settings"]["ui"]["theme"]
 
+        self.update_watchlist_view()
+
         def on_theme_change(old_value: str, new_value: str) -> None:
             gucken_settings_manager.settings["settings"]["ui"]["theme"] = new_value
 
