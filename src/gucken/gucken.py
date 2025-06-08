@@ -871,7 +871,7 @@ class GuckenApp(App):
             return
 
         series_search_result: SearchResult = self.current[
-            self.app.query_one("#results", ListView).index
+            index
         ]
 
         if is_in_watchlist(series_search_result):
