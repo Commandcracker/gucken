@@ -21,7 +21,7 @@ from rich.markup import escape
 from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
-from textual.containers import Center, Container, Horizontal, ScrollableContainer, Vertical, Grid
+from textual.containers import Center, Container, Horizontal, Vertical, ScrollableContainer
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import (
@@ -43,6 +43,19 @@ from textual.widgets import (
 from textual.worker import get_current_worker
 from textual_image.widget import Image
 from rich_argparse import RichHelpFormatter
+
+from .db import (
+    is_in_watchlist,
+    remove_from_watchlist,
+    add_to_watchlist,
+    get_watchlist,
+    remove_watchtime,
+    mark_episode_watched,
+    save_watchtime,
+    init_db,
+    get_unfinished_watchtime,
+    is_episode_watched
+)
 from .aniskip import (
     generate_chapters_file,
     get_timings_from_search
@@ -62,6 +75,7 @@ from .update import check
 from .utils import detect_player, is_android, set_default_vlc_interface_cfg, get_vlc_intf_user_path
 from .networking import AsyncClient
 from . import __version__
+import asyncio
 
 
 def sort_favorite_lang(
@@ -98,7 +112,6 @@ def sort_favorite_hoster_by_key(
             return len(pio_list)
 
     return sorted(hoster_list, key=hoster_sort_key)
-
 
 async def get_working_direct_link(hosters: list[Hoster], app: "GuckenApp") -> Union[DirectLink, None]:
     for hoster in hosters:
@@ -189,6 +202,94 @@ class ClickableListItem(ListItem):
             self.app.open_info()
         self.last_click = time()
 
+class PopularContainer(Container):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_loading(True)
+        self.app.call_later(lambda: self.run_worker(self.load_popular, exclusive=True, thread=True))
+
+    async def load_popular(self, worker=None):
+        self.app.call_from_thread(self.remove_children)
+        aniworld_results = await AniWorldProvider.get_popular()
+        serienstream_results = await SerienStreamProvider.get_popular()
+
+        anime_cards = []
+        serien_cards = []
+        image_tasks = []
+        semaphore = asyncio.Semaphore(20)  # Maximal 20 Bilder gleichzeitig laden
+
+        # Gemeinsamer HTTP-Client für alle Requests
+        client = AsyncClient(verify=False)
+        image_cache = {}
+
+        async def load_image(img_widget, url):
+            async with semaphore:
+                if url in image_cache:
+                    img_data = image_cache[url]
+                else:
+                    response = await client.get(url)
+                    img_data = BytesIO(response.content)
+                    image_cache[url] = img_data
+                self.app.call_from_thread(lambda: setattr(img_widget, "image", img_data))
+
+        # Karten ohne Bilder sofort bauen
+        for entry in aniworld_results:
+            img_widget = Image()
+            card = Container(
+                Vertical(
+                    img_widget,
+                    Label(entry["name"]),
+                    Label(entry["genre"]),
+                ),
+                classes="popular_card"
+            )
+            card.anime_name = entry["name"]
+            card.anime_provider_name = "aniworld.to"
+            card._last_click = None
+            anime_cards.append(card)
+            image_tasks.append(load_image(img_widget, entry["img"]))
+
+        for entry in serienstream_results:
+            img_widget = Image()
+            card = Container(
+                Vertical(
+                    img_widget,
+                    Label(entry["name"]),
+                    Label(entry["genre"]),
+                ),
+                classes="popular_card"
+            )
+            card.anime_name = entry["name"]
+            card.anime_provider_name = "serienstream.to"
+            card._last_click = None
+            serien_cards.append(card)
+            image_tasks.append(load_image(img_widget, entry["img"]))
+
+        def mount_cards():
+            self.mount(
+                Label("Anime", classes="popular_title"),
+                Container(*anime_cards, classes="popular_section"),
+                Label("Serien", classes="popular_title"),
+                Container(*serien_cards, classes="popular_section"),
+            )
+        self.app.call_from_thread(mount_cards)
+
+        # Bilder im Hintergrund nachladen, UI bleibt sofort nutzbar
+        await asyncio.gather(*image_tasks)
+        await client.aclose()
+        self.app.call_from_thread(lambda: self.set_loading(False))
+
+    def on_click(self, event: events.Click) -> None:
+        card = event.control
+        while card and "popular_card" not in getattr(card, "classes", []):
+            card = getattr(card, "parent", None)
+        if not card:
+            return
+        if "popular_card" in card.classes:
+            name = getattr(card, "anime_name", None)
+            provider = getattr(card, "anime_provider_name", None)
+            if name and provider:
+                self.app.open_info(name=name, provider=provider)
 
 class ClickableDataTable(DataTable):
     def __init__(self, *args, **kwargs):
@@ -239,6 +340,28 @@ def move_item(lst: list, from_index: int, to_index: int) -> list:
 
 CLIENT_ID = "1238219157464416266"
 
+class ContinueWatchScreen(ModalScreen):
+    def __init__(self, question, callback):
+        super().__init__()
+        self.question = question
+        self.callback = callback
+
+    def compose(self):
+        with Container():
+            yield Label(self.question)
+            with Horizontal():
+                yield Button("Nein", id="no")
+                yield Button("Ja", id="yes")
+
+    @on(Button.Pressed)
+    def handle_button(self, event):
+        if event.button.id == "yes":
+            self.dismiss(True)
+        else:
+            self.dismiss(False)
+
+    def on_dismiss(self, result):
+        self.callback(result)
 
 class GuckenApp(App):
     TITLE = f"Gucken {__version__}"
@@ -249,6 +372,8 @@ class GuckenApp(App):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("q", "quit", "Quit", show=False, priority=False),
     ]
+
+    init_db()
 
     # TODO: theme_changed_signal
 
@@ -261,6 +386,10 @@ class GuckenApp(App):
         self.current_info: Union[Series, None] = None
         self.detected_player = detect_player()
         self.RPC: Union[AioPresence, None] = None
+        self.unfinished = get_unfinished_watchtime()
+
+        if self.unfinished:
+            self.ask_next_unfinished()
 
         language: list = gucken_settings_manager.settings["settings"]["language"]
         language = remove_none_lang_keys(language)
@@ -283,6 +412,22 @@ class GuckenApp(App):
             _hoster
         )
         self.hoster = gucken_settings_manager.settings["settings"]["hoster"]
+
+    def ask_next_unfinished(self, i=0):
+        if i >= len(self.unfinished):
+            return
+        series, season, episode, provider, time_str = self.unfinished[i]
+        question = f"Du hast '{series}' S{season}E{episode} [{provider}] noch nicht zu Ende geschaut. Weiterschauen ab {time_str}?"
+
+        def on_answer(result):
+            if result:
+                # Hier Wiedergabe starten, z.B.:
+                # self.play_from_watchtime(series, season, episode, provider, time_str)
+                pass
+            else:
+                self.ask_next_unfinished(i + 1)
+
+        self.push_screen(ContinueWatchScreen(question, on_answer))
 
     def compose(self) -> ComposeResult:
         settings = gucken_settings_manager.settings["settings"]
@@ -318,13 +463,21 @@ class GuckenApp(App):
                         Markdown(id="markdown"),
                         id="res_con_2"
                     )
+                    yield Button(
+                        "Zur Watchlist hinzufügen",
+                        id="watchlist_btn",
+                        variant="success"
+                    )
                     yield Select.from_values(
                         [],  # Leere Liste zu Beginn
                         id="season_filter",
                         prompt="Alle Staffeln"
                     )
                     yield ClickableDataTable(id="season_list")
-
+            with TabPane("Watchlist", id="watchlist"):
+                yield ListView(id="watchlist_view")
+            with TabPane("Popular", id="popular"):
+                yield PopularContainer(id="popular_container")
             with TabPane("Settings", id="setting"):  # Settings "⚙"
                 # TODO: dont show unneeded on android
                 with ScrollableContainer(id="settings_container"):
@@ -389,6 +542,46 @@ class GuckenApp(App):
         # yield Footer()
         with Center(id="footer"):
             yield Label("Made by Commandcracker with [red]❤[/red]")
+
+    @work(exclusive=True, thread=True)
+    async def load_popular(self):
+        popular_list_view = self.query_one("#popular_list", ListView)
+        self.call_from_thread(popular_list_view.clear)
+        self.call_from_thread(popular_list_view.set_loading, True)
+        results = await AniWorldProvider.get_popular()
+        items = []
+        for entry in results:
+            # Bild laden
+            img_url = f"{entry['img']}" if entry['img'].startswith("/") else entry['img']
+            img_widget = Image()
+            async with AsyncClient(verify=False) as client:
+                response = await client.get(img_url)
+                img_widget.image = BytesIO(response.content)
+            # Karte zusammenbauen
+            card = ListItem(
+                Horizontal(
+                    img_widget,
+                    Markdown(f"**{entry['name']}**\n*{entry['genre']}*"),
+                )
+            )
+            card.anime_name = entry["name"]
+            card.anime_provider_name = "aniworld.to"
+            items.append(card)
+        self.call_from_thread(popular_list_view.extend, items)
+        self.call_from_thread(popular_list_view.set_loading, False)
+
+    @on(ListView.Selected, "#popular_list")
+    async def on_popular_selected(self, event):
+        item = event.item
+        # Doppelklick-Erkennung: Zeitstempel am Item speichern
+        now = time()
+        last_click = getattr(item, "_last_click", None)
+        setattr(item, "_last_click", now)
+        if last_click and now - last_click < 0.5:
+            name = getattr(item, "anime_name", None)
+            provider = getattr(item, "anime_provider_name", None)
+            if name and provider:
+                await self.open_info(name, provider)
 
     @on(Input.Changed)
     async def input_changed(self, event: Input.Changed):
@@ -497,6 +690,15 @@ class GuckenApp(App):
             img: Image = self.query_one("#image", Image)
             img.image = None
 
+        if id == "image_display":
+            img: Image = self.query_one("#image", Image)
+            btn: Button = self.query_one("#watchlist_btn", Button)
+            if event.value is False:
+                img.image = None
+                btn.add_class("no_image")
+            else:
+                btn.remove_class("no_image")
+
         settings[id] = event.value
 
         if id == "discord_presence":
@@ -516,9 +718,18 @@ class GuckenApp(App):
             else:
                 settings["player"]["player"] = event.value
 
+    @on(TabbedContent.TabActivated)
+    async def on_tab_activated(self, event):
+        if event.tab.id == "popular":  # Passe die ID an dein Tab an
+            if not hasattr(self, "_popular_loaded") or not self._popular_loaded:
+                await self.load_popular()
+                self._popular_loaded = True
+
     # TODO: dont lock - no async
     async def on_mount(self) -> None:
         self.theme = getenv("TEXTUAL_THEME") or gucken_settings_manager.settings["settings"]["ui"]["theme"]
+
+        self.update_watchlist_view()
 
         def on_theme_change(old_value: str, new_value: str) -> None:
             gucken_settings_manager.settings["settings"]["ui"]["theme"] = new_value
@@ -724,10 +935,53 @@ class GuckenApp(App):
         return await series_search_result.get_series()
 
     @work(exclusive=True)
-    async def open_info(self) -> None:
-        series_search_result: SearchResult = self.current[
-            self.app.query_one("#results", ListView).index
-        ]
+    async def open_info(self, name=None, provider=None) -> None:
+        watchlist_btn = self.query_one("#watchlist_btn", Button)
+
+        if not gucken_settings_manager.settings["settings"]["image_display"]:
+            watchlist_btn.add_class("no_image")
+        else:
+            watchlist_btn.remove_class("no_image")
+
+        # Falls name und provider übergeben werden, suche das passende SearchResult
+        if name and provider:
+            # Suche das passende SearchResult über beide Provider
+            search_results = []
+            if provider == "aniworld.to":
+                search_results = await self.aniworld_search(name)
+            elif provider == "serienstream.to":
+                search_results = await self.serienstream_search(name)
+            if not search_results:
+                return
+            # Nimm das beste Ergebnis
+            series_search_result = search_results[0]
+            # Setze self.current und aktualisiere die ListView
+            self.current = search_results
+            results_list_view = self.query_one("#results", ListView)
+            items = []
+            for series in search_results:
+                items.append(ClickableListItem(
+                    Markdown(
+                        f"##### {series.name} {getattr(series, 'production_year', '')} [{series.provider_name}]"
+                        f"\n{series.description}"
+                    )
+                ))
+            results_list_view.clear()
+            results_list_view.extend(items)
+            results_list_view.index = 0
+        else:
+            index = self.app.query_one("#results", ListView).index
+            if index is None or not self.current or index >= len(self.current):
+                return
+            series_search_result: SearchResult = self.current[index]
+
+        if is_in_watchlist(series_search_result):
+            watchlist_btn.label = "Aus Watchlist entfernen"
+            watchlist_btn.variant = "error"
+        else:
+            watchlist_btn.label = "Zur Watchlist hinzufügen"
+            watchlist_btn.variant = "success"
+
         info_tab = self.query_one("#info", TabPane)
         info_tab.disabled = False
         info_tab.set_loading(True)
@@ -741,7 +995,6 @@ class GuckenApp(App):
         season_filter = self.query_one("#season_filter", Select)
         unique_seasons = sorted(set(ep.season for ep in series.episodes))
 
-        # Sortiere die Staffeln so, dass Filme (Staffel 0) am Ende erscheint
         regular_seasons = [s for s in unique_seasons if s != 0]
         movies_season = [s for s in unique_seasons if s == 0]
         sorted_seasons = regular_seasons + movies_season
@@ -761,39 +1014,25 @@ class GuckenApp(App):
                 response = await client.get(series.cover)
                 img.image = BytesIO(response.content)
 
-        # make sure to reset colum spacing
         table.clear(columns=True)
         table.add_columns("FT", "S", "F", "Title", "Hoster", "Sprache")
 
-        # Sortiere die Episoden entsprechend
-
-        # Sortiere die Episoden entsprechend der gewünschten Reihenfolge
         sorted_episodes = []
-        # Zuerst Specials (S)
         for ep in series.episodes:
             if ep.season == "S":
                 sorted_episodes.append(ep)
-        # Dann numerische Staffeln
         for ep in series.episodes:
             if isinstance(ep.season, (int, str)) and ep.season not in ["S", 0]:
                 sorted_episodes.append(ep)
-        # Zum Schluss Filme (F)
         for ep in series.episodes:
             if ep.season == 0:
                 sorted_episodes.append(ep)
 
         c = 0
         for ep in sorted_episodes:
-            hl = []
-            for h in ep.available_hoster:
-                hl.append(hoster.get_key(h))
-
-            ll = []
-            for l in sort_favorite_lang(ep.available_language, self.language):
-                ll.append(l.name)
-
+            hl = [hoster.get_key(h) for h in ep.available_hoster]
+            ll = [l.name for l in sort_favorite_lang(ep.available_language, self.language)]
             c += 1
-            # Zeige die Staffeln in der gewünschten Reihenfolge
             if ep.season == "S":
                 season_display = "S"
             elif ep.season == 0:
@@ -809,7 +1048,52 @@ class GuckenApp(App):
                 " ".join(sort_favorite_hoster_by_key(hl, self.hoster)),
                 " ".join(ll),
             )
-        info_tab.set_loading(False)
+            info_tab.set_loading(False)
+
+    @on(Button.Pressed)
+    def on_watchlist_btn(self, event):
+        if event.button.id == "watchlist_btn":
+            index = self.app.query_one("#results", ListView).index
+            if index is None:
+                # Fallback: erstes Element aus self.current verwenden
+                if not self.current:
+                    return
+                series = self.current[0]
+            else:
+                series = self.current[index]
+            if is_in_watchlist(series):
+                remove_from_watchlist(series)
+                event.button.label = "Zur Watchlist hinzufügen"
+                event.button.variant = "success"
+            else:
+                add_to_watchlist(series)
+                event.button.label = "Aus Watchlist entfernen"
+                event.button.variant = "error"
+            self.update_watchlist_view()
+
+    def update_watchlist_view(self):
+        watchlist_view = self.query_one("#watchlist_view", ListView)
+        watchlist_view.clear()
+        for name, provider_name in get_watchlist():
+            item = ClickableListItem(Markdown(f"##### {name} [{provider_name}]"))
+            item.anime_name = name
+            item.anime_provider_name = provider_name
+            watchlist_view.append(item)
+
+    @on(ListView.Selected, "#watchlist_view")
+    async def on_watchlist_selected(self, event):
+        item = event.item
+        name = getattr(item, "anime_name", None)
+        provider_name = getattr(item, "anime_provider_name", None)
+        if name and provider_name:
+            results = await gather(self.aniworld_search(name), self.serienstream_search(name))
+            for result_list in results:
+                if result_list:
+                    for series in result_list:
+                        if series.name == name and series.provider_name == provider_name:
+                            self.current = [series]
+                            self.call_later(lambda: self.open_info(name, provider_name))
+                            return
 
     @work(exclusive=True, thread=True)
     async def update_check(self):
@@ -839,19 +1123,18 @@ class GuckenApp(App):
             )
             return
 
-        if p != "AutomaticPlayer":
-            if not _player.is_available():
-                self.notify(
-                    "Your configured player has not been found!",
-                    title="Player not found",
-                    severity="error",
-                )
-                return
+        if p != "AutomaticPlayer" and not _player.is_available():
+            self.notify(
+                "Your configured player has not been found!",
+                title="Player not found",
+                severity="error",
+            )
+            return
 
         episode: Episode = episodes[index]
         processed_hoster = await episode.process_hoster()
 
-        if len(episode.available_language) <= 0:
+        if not episode.available_language:
             self.notify(
                 "The episode you are trying to watch has no stream available.",
                 title="No stream available",
@@ -862,8 +1145,14 @@ class GuckenApp(App):
         lang = sort_favorite_lang(episode.available_language, self.language)[0]
         sorted_hoster = sort_favorite_hoster(processed_hoster.get(lang), self.hoster)
         direct_link = await get_working_direct_link(sorted_hoster, self)
+        if not direct_link:
+            self.notify(
+                "No working stream found.",
+                title="No stream available",
+                severity="error",
+            )
+            return
 
-        # TODO: check for header support
         syncplay = gucken_settings_manager.settings["settings"]["syncplay"]
         fullscreen = gucken_settings_manager.settings["settings"]["fullscreen"]
 
@@ -871,53 +1160,35 @@ class GuckenApp(App):
         args = _player.play(direct_link.url, title, fullscreen, direct_link.headers)
 
         if self.RPC and self.RPC.sock_writer:
+            max_length = 128
+            large_text = title[:max_length]
             async def update():
                 await self.RPC.update(
-                    # state="00:20:00 / 00:25:00 57% complete",
                     details=title[:128],
-                    large_text=title,
+                    large_text=large_text,
                     large_image=series_search_result.cover,
-                    # small_image as playing or stopped ?
-                    # small_image="https://jooinn.com/images/lonely-tree-reflection-3.jpg",
-                    # small_text="ff 15",
-                    # start=time.time(), # for paused
-                    # end=time.time() + timedelta(minutes=20).seconds   # for time left
                 )
 
             self.app.call_later(update)
 
-        # Picture-in-Picture mode
         if gucken_settings_manager.settings["settings"]["pip"]:
             if isinstance(_player, MPVPlayer):
-                args.append("--ontop")
-                args.append("--no-border")
-                args.append("--snap-window")
-
+                args += ["--ontop", "--no-border", "--snap-window"]
             if isinstance(_player, VLCPlayer):
-                args.append("--video-on-top")
-                args.append("--qt-minimal-view")
-                args.append("--no-video-deco")
+                args += ["--video-on-top", "--qt-minimal-view", "--no-video-deco"]
 
-        if direct_link.force_hls:
-            # TODO: make work for vlc and others
-            if isinstance(_player, MPVPlayer):
-                args.append("--demuxer=lavf")
-                args.append("--demuxer-lavf-format=hls")
+        if direct_link.force_hls and isinstance(_player, MPVPlayer):
+            args += ["--demuxer=lavf", "--demuxer-lavf-format=hls"]
 
         if self._debug:
             logs_path = user_log_path("gucken", ensure_exists=True)
             if isinstance(_player, MPVPlayer):
                 args.append("--log-file=" + str(logs_path.joinpath("mpv.log")))
             elif isinstance(_player, VLCPlayer):
-                args.append("--file-logging")
-                args.append("--log-verbose=3")
-                args.append("--logfile=" + str(logs_path.joinpath("vlc.log")))
+                args += ["--file-logging", "--log-verbose=3", "--logfile=" + str(logs_path.joinpath("vlc.log"))]
 
         chapters_file = None
 
-        # TODO: cache more
-        # TODO: Support based on mpv
-        # TODO: recover start --start=00:56
         if isinstance(_player, MPVPlayer) or isinstance(_player, VLCPlayer):
             ani_skip_opening = gucken_settings_manager.settings["settings"]["ani_skip"]["skip_opening"]
             ani_skip_ending = gucken_settings_manager.settings["settings"]["ani_skip"]["skip_ending"]
@@ -940,53 +1211,40 @@ class GuckenApp(App):
 
                             register_atexit(delete_chapters_file)
                             args.append(f"--chapters-file={chapters_file.name}")
-
                         script_opts = []
                         if ani_skip_opening:
-                            script_opts.append(f"skip-op_start={timings.op_start}")
-                            script_opts.append(f"skip-op_end={timings.op_end}")
+                            script_opts += [f"skip-op_start={timings.op_start}", f"skip-op_end={timings.op_end}"]
                         if ani_skip_ending:
-                            script_opts.append(f"skip-ed_start={timings.ed_start}")
-                            script_opts.append(f"skip-ed_end={timings.ed_end}")
-                        if len(script_opts) > 0:
+                            script_opts += [f"skip-ed_start={timings.ed_start}", f"skip-ed_end={timings.ed_end}"]
+                        if script_opts:
                             args.append(f"--script-opts={','.join(script_opts)}")
-
                         args.append(
                             "--scripts-append=" + str(Path(__file__).parent.joinpath("resources", "mpv_gucken.lua")))
-
                     if isinstance(_player, VLCPlayer):
                         prepend_data = []
                         if ani_skip_opening:
-                            prepend_data.append(set_default_vlc_interface_cfg("op_start", timings.op_start))
-                            prepend_data.append(set_default_vlc_interface_cfg("op_end", timings.op_end))
+                            prepend_data += [set_default_vlc_interface_cfg("op_start", timings.op_start),
+                                             set_default_vlc_interface_cfg("op_end", timings.op_end)]
                         if ani_skip_ending:
-                            prepend_data.append(set_default_vlc_interface_cfg("ed_start", timings.ed_start))
-                            prepend_data.append(set_default_vlc_interface_cfg("ed_end", timings.ed_end))
-
+                            prepend_data += [set_default_vlc_interface_cfg("ed_start", timings.ed_start),
+                                             set_default_vlc_interface_cfg("ed_end", timings.ed_end)]
                         vlc_intf_user_path = get_vlc_intf_user_path(_player.executable).vlc_intf_user_path
                         Path(vlc_intf_user_path).mkdir(mode=0o755, parents=True, exist_ok=True)
-
                         vlc_skip_plugin = Path(__file__).parent.joinpath("resources", "vlc_gucken.lua")
                         copy_to = join(vlc_intf_user_path, "vlc_gucken.lua")
-
                         with open(vlc_skip_plugin, 'r') as f:
                             original_content = f.read()
-
                         with open(copy_to, 'w') as f:
                             f.write("\n".join(prepend_data) + original_content)
-
                         args.append("--control=luaintf{intf=vlc_gucken}")
 
         if syncplay:
-            # TODO: make work with flatpak
-            # TODO: make work with android
             syncplay_path = None
             if which("syncplay"):
                 syncplay_path = "syncplay"
-            if not syncplay_path:
-                if os_name == "nt":
-                    if which(r"C:\Program Files (x86)\Syncplay\Syncplay.exe"):
-                        syncplay_path = r"C:\Program Files (x86)\Syncplay\Syncplay.exe"
+            if not syncplay_path and os_name == "nt":
+                if which(r"C:\Program Files (x86)\Syncplay\Syncplay.exe"):
+                    syncplay_path = r"C:\Program Files (x86)\Syncplay\Syncplay.exe"
             if not syncplay_path:
                 self.notify(
                     "Syncplay not found",
@@ -994,20 +1252,10 @@ class GuckenApp(App):
                     severity="error",
                 )
             else:
-                # TODO: add mpv.net, IINA, MPC-BE, MPC-HE, celluloid ?
                 if isinstance(_player, MPVPlayer) or isinstance(_player, VLCPlayer):
                     player_path = which(args[0])
                     url = args[1]
-                    args.pop(0)
-                    args.pop(0)
-                    args = [
-                               syncplay_path,
-                               "--player-path",
-                               player_path,
-                               # "--debug",
-                               url,
-                               "--",
-                           ] + args
+                    args = [syncplay_path, "--player-path", player_path, url, "--"] + args[2:]
                 else:
                     self.notify(
                         "Your player is not supported by Syncplay",
@@ -1016,10 +1264,6 @@ class GuckenApp(App):
                     )
 
         logging.info("Running: %s", args)
-        # TODO: detach on linux
-        # multiprocessing
-        # child_pid = os.fork()
-        # if child_pid == 0:
         process = Popen(args, stderr=PIPE, stdout=DEVNULL, stdin=DEVNULL)
         while not self.app._exit:
             sleep(0.1)
@@ -1070,6 +1314,20 @@ class GuckenApp(App):
                 if not len(episodes) <= index + 1:
                     if autoplay is True:
                         self.app.call_later(push_next_screen)
+
+                        remove_watchtime(
+                            series_search_result.name,
+                            episode.season,
+                            episode.episode_number,
+                            series_search_result.provider_name
+                        )
+                        mark_episode_watched(
+                            series_search_result.name,
+                            episode.season,
+                            episode.episode_number,
+                            series_search_result.provider_name
+                        )
+
                 else:
                     # TODO: ask to mark as completed
                     pass

@@ -135,6 +135,14 @@ Tab {
     width: 1fr;
 }
 
+.watchlist-button {
+    width: 100%;
+    height: 3;
+    margin: 1;
+    content-align: center middle;
+}
+
+
 /* * This is a workaround for the horizontal scrollable container
  * to have a margin at the bottom, so it does not touch the next element.
  */
@@ -144,4 +152,129 @@ Tab {
 
 ScrollableContainer > Horizontal#res_con_2 {
     margin-bottom: 1;
+}
+
+#watchlist-main-container {
+    width: 100%;
+    height: 100%;
+    padding: 1;
+    background: #1e1e1e;
+}
+
+#watchlist-title {
+    text-align: center;
+    background: #2c3e50;
+    color: #ffffff;
+    padding: 1;
+    border-bottom: solid #3498db;
+}
+
+#watchlist-content {
+    height: 100%;
+    margin: 1;
+}
+
+#table-container {
+    width: 100%;
+    height: 100%;
+    border: solid #333333;
+    background: #252525;
+}
+
+.watchlist-table {
+    width: 100%;
+    height: 100%;
+    color: #ffffff;
+}
+
+.watchlist-table > .datatable--header {
+    background: #2c3e50;
+    padding: 1;
+    text-style: bold;
+}
+
+.watchlist-table > .datatable--row {
+    padding: 1;
+    border-bottom: solid #333333;
+}
+
+.watchlist-table > .datatable--row:hover {
+    background: #2c3e50;
+}
+
+.watchlist-table > .datatable--row-selected {
+    background: #3498db;
+    color: #ffffff;
+}
+
+.season-filter {
+    margin-bottom: 2;  /* Erhöhe den Abstand nach unten */
+}
+
+#watchlist_btn {
+    width: auto;
+    min-width: 20; /* gleiche Breite wie das Bild, falls das Bild 20 breit ist */
+    margin: 1 0;
+    content-align: center middle;
+}
+
+#watchlist_btn.no_image {
+    width: 100%;
+    min-width: 0;
+}
+
+#popular_container {
+    layout: vertical;
+    overflow: auto;
+    margin-bottom: 2;
+}
+
+.popular_title {
+    height: 2;
+    width: 100%;
+    text-align: left;
+    margin: 1 0 1 0;
+    color: $accent;
+    content-align: left middle;
+}
+
+.popular_section {
+    layout: grid;
+    grid-size: 8;
+    grid-rows: auto;
+    grid-gutter: 1;
+    margin-bottom: 2;
+    height: auto;
+}
+
+.popular_card {
+    height: auto;
+    max-height: 20;
+    width: 100%;
+    margin: 0;
+    content-align: center top;
+    layout: vertical;
+}
+
+.popular_card Image {
+    height: 16;
+    width: 24;
+    content-align: center top;
+    background: $background;
+}
+
+.popular_card Label {
+    height: 1;
+    width: 24;
+    max-width: 100%;
+    text-align: center;
+    overflow: hidden;
+}
+
+/* Platzhalter für leere Listen */
+.popular_card.placeholder {
+    background: $surface;
+    content-align: center middle;
+    min-height: 6;
+    margin: 2 0 2 0;
 }
