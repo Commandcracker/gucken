@@ -21,7 +21,7 @@ from rich.markup import escape
 from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
-from textual.containers import Center, Container, Horizontal, ScrollableContainer
+from textual.containers import Center, Container, Horizontal, Vertical, ScrollableContainer
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import (
@@ -112,7 +112,6 @@ def sort_favorite_hoster_by_key(
 
     return sorted(hoster_list, key=hoster_sort_key)
 
-
 async def get_working_direct_link(hosters: list[Hoster], app: "GuckenApp") -> Union[DirectLink, None]:
     for hoster in hosters:
         name = type(hoster).__name__
@@ -202,6 +201,80 @@ class ClickableListItem(ListItem):
             self.app.open_info()
         self.last_click = time()
 
+class PopularContainer(Container):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_loading(True)
+        self.app.call_later(self.load_popular)
+
+    async def load_popular(self):
+        self.remove_children()
+        aniworld_results = await AniWorldProvider.get_popular()
+        serienstream_results = await SerienStreamProvider.get_popular()
+
+        # AniWorld-Karten
+        anime_cards = []
+        for entry in aniworld_results:
+            img_url = entry["img"]
+            img_widget = Image()
+            async with AsyncClient(verify=False) as client:
+                response = await client.get(img_url)
+                img_widget.image = BytesIO(response.content)
+            card = Container(
+                Vertical(
+                    img_widget,
+                    Label(entry["name"]),
+                    Label(entry["genre"]),
+                ),
+                classes="popular_card"
+            )
+            card.anime_name = entry["name"]
+            card.anime_provider_name = "aniworld.to"
+            card._last_click = None
+            anime_cards.append(card)
+
+        # SerienStream-Karten
+        serien_cards = []
+        for entry in serienstream_results:
+            img_url = entry["img"]
+            img_widget = Image()
+            async with AsyncClient(verify=False) as client:
+                response = await client.get(img_url)
+                img_widget.image = BytesIO(response.content)
+            card = Container(
+                Vertical(
+                    img_widget,
+                    Label(entry["name"]),
+                    Label(entry["genre"]),
+                ),
+                classes="popular_card"
+            )
+            card.anime_name = entry["name"]
+            card.anime_provider_name = "serienstream.to"
+            card._last_click = None
+            serien_cards.append(card)
+
+        # Überschriften und Karten montieren
+        self.mount(
+            Label("Anime", classes="popular_title"),
+            Container(*anime_cards, classes="popular_section"),
+            Label("Serien", classes="popular_title"),
+            Container(*serien_cards, classes="popular_section"),
+        )
+        self.set_loading(False)
+
+    def on_click(self, event: events.Click) -> None:
+        # Finde das nächste Eltern-Widget mit der Klasse "popular_card"
+        card = event.control
+        while card and "popular_card" not in getattr(card, "classes", []):
+            card = getattr(card, "parent", None)
+        if not card:
+            return
+        if "popular_card" in card.classes:
+            name = getattr(card, "anime_name", None)
+            provider = getattr(card, "anime_provider_name", None)
+            if name and provider:
+                self.app.open_info(name=name, provider=provider)
 
 class ClickableDataTable(DataTable):
     def __init__(self, *args, **kwargs):
@@ -388,6 +461,8 @@ class GuckenApp(App):
                     yield ClickableDataTable(id="season_list")
             with TabPane("Watchlist", id="watchlist"):
                 yield ListView(id="watchlist_view")
+            with TabPane("Popular", id="popular"):
+                yield PopularContainer(id="popular_container")
             with TabPane("Settings", id="setting"):  # Settings "⚙"
                 # TODO: dont show unneeded on android
                 with ScrollableContainer(id="settings_container"):
@@ -452,6 +527,46 @@ class GuckenApp(App):
         # yield Footer()
         with Center(id="footer"):
             yield Label("Made by Commandcracker with [red]❤[/red]")
+
+    @work(exclusive=True, thread=True)
+    async def load_popular(self):
+        popular_list_view = self.query_one("#popular_list", ListView)
+        self.call_from_thread(popular_list_view.clear)
+        self.call_from_thread(popular_list_view.set_loading, True)
+        results = await AniWorldProvider.get_popular()
+        items = []
+        for entry in results:
+            # Bild laden
+            img_url = f"{entry['img']}" if entry['img'].startswith("/") else entry['img']
+            img_widget = Image()
+            async with AsyncClient(verify=False) as client:
+                response = await client.get(img_url)
+                img_widget.image = BytesIO(response.content)
+            # Karte zusammenbauen
+            card = ListItem(
+                Horizontal(
+                    img_widget,
+                    Markdown(f"**{entry['name']}**\n*{entry['genre']}*"),
+                )
+            )
+            card.anime_name = entry["name"]
+            card.anime_provider_name = "aniworld.to"
+            items.append(card)
+        self.call_from_thread(popular_list_view.extend, items)
+        self.call_from_thread(popular_list_view.set_loading, False)
+
+    @on(ListView.Selected, "#popular_list")
+    async def on_popular_selected(self, event):
+        item = event.item
+        # Doppelklick-Erkennung: Zeitstempel am Item speichern
+        now = time()
+        last_click = getattr(item, "_last_click", None)
+        setattr(item, "_last_click", now)
+        if last_click and now - last_click < 0.5:
+            name = getattr(item, "anime_name", None)
+            provider = getattr(item, "anime_provider_name", None)
+            if name and provider:
+                await self.open_info(name, provider)
 
     @on(Input.Changed)
     async def input_changed(self, event: Input.Changed):
@@ -584,6 +699,7 @@ class GuckenApp(App):
         self.theme = getenv("TEXTUAL_THEME") or gucken_settings_manager.settings["settings"]["ui"]["theme"]
 
         self.update_watchlist_view()
+        self.load_popular()
 
         def on_theme_change(old_value: str, new_value: str) -> None:
             gucken_settings_manager.settings["settings"]["ui"]["theme"] = new_value

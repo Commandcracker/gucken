@@ -249,6 +249,29 @@ class AniWorldProvider(Provider):
                 cover=f"https://{search_result.host}" + soup.find("img", attrs={"itemprop": "image"}).attrs.get("data-src")
             )
 
+    @staticmethod
+    async def get_popular() -> list[dict]:
+        async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
+            response = await client.get(f"https://{AniWorldProvider.host}/beliebte-animes")
+            soup = BeautifulSoup(response.text, "html.parser")
+            container = soup.find("div", class_="seriesListContainer")
+            results = []
+            for entry in container.find_all("div", class_="col-md-15 col-sm-3 col-xs-6"):
+                a_tag = entry.find("a")
+                link = a_tag["href"]
+                img_tag = a_tag.find("img")
+                img = img_tag.get("data-src") or img_tag.get("src")
+                name = a_tag.find("h3").text.strip()
+                genre_tag = a_tag.find("small")
+                genre = genre_tag.text.strip() if genre_tag else ""
+                results.append({
+                    "link": link,
+                    "img": "https://" + AniWorldProvider.host + img,
+                    "name": name,
+                    "genre": genre
+                })
+            return results
+
 
 async def get_episodes_from_url(staffel: int, url: str) -> list[Episode]:
     async with AsyncClient(accept_language=AcceptLanguage.DE) as client:
