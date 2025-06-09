@@ -690,6 +690,15 @@ class GuckenApp(App):
             img: Image = self.query_one("#image", Image)
             img.image = None
 
+        if id == "image_display":
+            img: Image = self.query_one("#image", Image)
+            btn: Button = self.query_one("#watchlist_btn", Button)
+            if event.value is False:
+                img.image = None
+                btn.add_class("no_image")
+            else:
+                btn.remove_class("no_image")
+
         settings[id] = event.value
 
         if id == "discord_presence":

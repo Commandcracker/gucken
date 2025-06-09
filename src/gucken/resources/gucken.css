@@ -218,6 +218,11 @@ ScrollableContainer > Horizontal#res_con_2 {
     content-align: center middle;
 }
 
+#watchlist_btn.no_image {
+    width: 100%;
+    min-width: 0;
+}
+
 #popular_container {
     layout: vertical;
     overflow: auto;
