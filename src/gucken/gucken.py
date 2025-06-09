@@ -206,26 +206,26 @@ class PopularContainer(Container):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.set_loading(True)
-        self.app.call_later(self.load_popular)
+        self.app.call_later(lambda: self.run_worker(self.load_popular, exclusive=True, thread=True))
 
-    import asyncio
-
-    async def load_popular(self):
-        self.remove_children()
+    async def load_popular(self, worker=None):
+        self.app.call_from_thread(self.remove_children)
         aniworld_results = await AniWorldProvider.get_popular()
         serienstream_results = await SerienStreamProvider.get_popular()
 
+        anime_cards = []
+        serien_cards = []
+        image_tasks = []
+
+        # Hilfsfunktion für das Nachladen der Bilder
         async def load_image(img_widget, url):
             async with AsyncClient(verify=False) as client:
                 response = await client.get(url)
-                img_widget.image = BytesIO(response.content)
+                self.app.call_from_thread(lambda: setattr(img_widget, "image", BytesIO(response.content)))
 
-        # AniWorld-Karten
-        anime_cards = []
-        anime_image_tasks = []
+        # Karten ohne Bilder sofort bauen
         for entry in aniworld_results:
-            img_url = entry["img"]
-            img_widget = Image()  # Platzhalter
+            img_widget = Image()
             card = Container(
                 Vertical(
                     img_widget,
@@ -238,14 +238,10 @@ class PopularContainer(Container):
             card.anime_provider_name = "aniworld.to"
             card._last_click = None
             anime_cards.append(card)
-            anime_image_tasks.append(load_image(img_widget, img_url))
+            image_tasks.append(load_image(img_widget, entry["img"]))
 
-        # SerienStream-Karten
-        serien_cards = []
-        serien_image_tasks = []
         for entry in serienstream_results:
-            img_url = entry["img"]
-            img_widget = Image()  # Platzhalter
+            img_widget = Image()
             card = Container(
                 Vertical(
                     img_widget,
@@ -258,22 +254,22 @@ class PopularContainer(Container):
             card.anime_provider_name = "serienstream.to"
             card._last_click = None
             serien_cards.append(card)
-            serien_image_tasks.append(load_image(img_widget, img_url))
+            image_tasks.append(load_image(img_widget, entry["img"]))
 
-        # Überschriften und Karten montieren
-        self.mount(
-            Label("Anime", classes="popular_title"),
-            Container(*anime_cards, classes="popular_section"),
-            Label("Serien", classes="popular_title"),
-            Container(*serien_cards, classes="popular_section"),
-        )
+        def mount_cards():
+            self.mount(
+                Label("Anime", classes="popular_title"),
+                Container(*anime_cards, classes="popular_section"),
+                Label("Serien", classes="popular_title"),
+                Container(*serien_cards, classes="popular_section"),
+            )
+        self.app.call_from_thread(mount_cards)
 
-        # Bilder parallel laden, UI bleibt responsiv
-        await asyncio.gather(*anime_image_tasks, *serien_image_tasks)
-        self.set_loading(False)
+        # Bilder im Hintergrund nachladen, UI bleibt sofort nutzbar
+        await asyncio.gather(*image_tasks)
+        self.app.call_from_thread(lambda: self.set_loading(False))
 
     def on_click(self, event: events.Click) -> None:
-        # Finde das nächste Eltern-Widget mit der Klasse "popular_card"
         card = event.control
         while card and "popular_card" not in getattr(card, "classes", []):
             card = getattr(card, "parent", None)
@@ -703,12 +699,18 @@ class GuckenApp(App):
             else:
                 settings["player"]["player"] = event.value
 
+    @on(TabbedContent.TabActivated)
+    async def on_tab_activated(self, event):
+        if event.tab.id == "popular":  # Passe die ID an dein Tab an
+            if not hasattr(self, "_popular_loaded") or not self._popular_loaded:
+                await self.load_popular()
+                self._popular_loaded = True
+
     # TODO: dont lock - no async
     async def on_mount(self) -> None:
         self.theme = getenv("TEXTUAL_THEME") or gucken_settings_manager.settings["settings"]["ui"]["theme"]
 
         self.update_watchlist_view()
-        self.load_popular()
 
         def on_theme_change(old_value: str, new_value: str) -> None:
             gucken_settings_manager.settings["settings"]["ui"]["theme"] = new_value
