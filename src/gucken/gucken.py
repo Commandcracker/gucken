@@ -910,38 +910,36 @@ class GuckenApp(App):
 
         # Falls name und provider übergeben werden, suche das passende SearchResult
         if name and provider:
-            # Suche in self.current
-            series_search_result = None
-            if self.current:
-                for s in self.current:
-                    if s.name == name and s.provider_name == provider:
-                        series_search_result = s
-                        break
-            # Falls nicht gefunden, suche per Provider
-            if not series_search_result:
-                results = await gather(self.aniworld_search(name), self.serienstream_search(name))
-                for result_list in results:
-                    if result_list:
-                        for s in result_list:
-                            if s.name == name and s.provider_name == provider:
-                                series_search_result = s
-                                break
-                    if series_search_result:
-                        break
-            if not series_search_result:
+            # Suche das passende SearchResult über beide Provider
+            search_results = []
+            if provider == "aniworld.to":
+                search_results = await self.aniworld_search(name)
+            elif provider == "serienstream.to":
+                search_results = await self.serienstream_search(name)
+            if not search_results:
                 return
-            # Setze self.current auf das gefundene Ergebnis, damit alles wie gewohnt funktioniert
-            self.current = [series_search_result]
-            index = 0
+            # Nimm das beste Ergebnis
+            series_search_result = search_results[0]
+            # Setze self.current und aktualisiere die ListView
+            self.current = search_results
+            results_list_view = self.query_one("#results", ListView)
+            items = []
+            for series in search_results:
+                items.append(ClickableListItem(
+                    Markdown(
+                        f"##### {series.name} {getattr(series, 'production_year', '')} [{series.provider_name}]"
+                        f"\n{series.description}"
+                    )
+                ))
+            results_list_view.clear()
+            results_list_view.extend(items)
+            results_list_view.index = 0
         else:
             index = self.app.query_one("#results", ListView).index
             if index is None or not self.current or index >= len(self.current):
                 return
-            series_search_result: SearchResult = self.current[
-                self.app.query_one("#results", ListView).index
-            ]
+            series_search_result: SearchResult = self.current[index]
 
-        # Rest wie gehabt ...
         if is_in_watchlist(series_search_result):
             watchlist_btn.label = "Aus Watchlist entfernen"
             watchlist_btn.variant = "error"
@@ -1006,13 +1004,6 @@ class GuckenApp(App):
                 season_display = "F"
             else:
                 season_display = ep.season
-
-            watched = is_episode_watched(
-                series_search_result.name,
-                ep.season,
-                ep.episode_number,
-                series_search_result.provider_name
-            )
 
             table.add_row(
                 c,
@@ -1134,10 +1125,12 @@ class GuckenApp(App):
         args = _player.play(direct_link.url, title, fullscreen, direct_link.headers)
 
         if self.RPC and self.RPC.sock_writer:
+            max_length = 128
+            large_text = title[:max_length]
             async def update():
                 await self.RPC.update(
                     details=title[:128],
-                    large_text=title,
+                    large_text=large_text,
                     large_image=series_search_result.cover,
                 )
 
