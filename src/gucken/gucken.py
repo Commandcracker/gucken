@@ -75,6 +75,7 @@ from .update import check
 from .utils import detect_player, is_android, set_default_vlc_interface_cfg, get_vlc_intf_user_path
 from .networking import AsyncClient
 from . import __version__
+import asyncio
 
 
 def sort_favorite_lang(
@@ -207,19 +208,24 @@ class PopularContainer(Container):
         self.set_loading(True)
         self.app.call_later(self.load_popular)
 
+    import asyncio
+
     async def load_popular(self):
         self.remove_children()
         aniworld_results = await AniWorldProvider.get_popular()
         serienstream_results = await SerienStreamProvider.get_popular()
 
+        async def load_image(img_widget, url):
+            async with AsyncClient(verify=False) as client:
+                response = await client.get(url)
+                img_widget.image = BytesIO(response.content)
+
         # AniWorld-Karten
         anime_cards = []
+        anime_image_tasks = []
         for entry in aniworld_results:
             img_url = entry["img"]
-            img_widget = Image()
-            async with AsyncClient(verify=False) as client:
-                response = await client.get(img_url)
-                img_widget.image = BytesIO(response.content)
+            img_widget = Image()  # Platzhalter
             card = Container(
                 Vertical(
                     img_widget,
@@ -232,15 +238,14 @@ class PopularContainer(Container):
             card.anime_provider_name = "aniworld.to"
             card._last_click = None
             anime_cards.append(card)
+            anime_image_tasks.append(load_image(img_widget, img_url))
 
         # SerienStream-Karten
         serien_cards = []
+        serien_image_tasks = []
         for entry in serienstream_results:
             img_url = entry["img"]
-            img_widget = Image()
-            async with AsyncClient(verify=False) as client:
-                response = await client.get(img_url)
-                img_widget.image = BytesIO(response.content)
+            img_widget = Image()  # Platzhalter
             card = Container(
                 Vertical(
                     img_widget,
@@ -253,6 +258,7 @@ class PopularContainer(Container):
             card.anime_provider_name = "serienstream.to"
             card._last_click = None
             serien_cards.append(card)
+            serien_image_tasks.append(load_image(img_widget, img_url))
 
         # Überschriften und Karten montieren
         self.mount(
@@ -261,6 +267,9 @@ class PopularContainer(Container):
             Label("Serien", classes="popular_title"),
             Container(*serien_cards, classes="popular_section"),
         )
+
+        # Bilder parallel laden, UI bleibt responsiv
+        await asyncio.gather(*anime_image_tasks, *serien_image_tasks)
         self.set_loading(False)
 
     def on_click(self, event: events.Click) -> None:
