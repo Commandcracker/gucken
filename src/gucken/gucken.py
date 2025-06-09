@@ -21,7 +21,7 @@ from rich.markup import escape
 from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
-from textual.containers import Center, Container, Horizontal, ScrollableContainer, Vertical, Grid
+from textual.containers import Center, Container, Horizontal, ScrollableContainer
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import (
@@ -43,6 +43,19 @@ from textual.widgets import (
 from textual.worker import get_current_worker
 from textual_image.widget import Image
 from rich_argparse import RichHelpFormatter
+
+from .db import (
+    is_in_watchlist,
+    remove_from_watchlist,
+    add_to_watchlist,
+    get_watchlist,
+    remove_watchtime,
+    mark_episode_watched,
+    save_watchtime,
+    init_db,
+    get_unfinished_watchtime,
+    is_episode_watched
+)
 from .aniskip import (
     generate_chapters_file,
     get_timings_from_search
@@ -62,95 +75,7 @@ from .update import check
 from .utils import detect_player, is_android, set_default_vlc_interface_cfg, get_vlc_intf_user_path
 from .networking import AsyncClient
 from . import __version__
-import sqlite3
 
-GUCKEN_DB = user_config_path("gucken").joinpath("gucken.db")
-
-def init_db():
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS watched_episodes
-                 (series TEXT, season INTEGER, episode INTEGER, provider TEXT,
-                  PRIMARY KEY (series, season, episode, provider))''')
-    c.execute('''CREATE TABLE IF NOT EXISTS watchtime
-                 (series TEXT, season INTEGER, episode INTEGER, provider TEXT, time TEXT,
-                  PRIMARY KEY (series, season, episode, provider))''')
-    c.execute('''CREATE TABLE IF NOT EXISTS watchlist
-                 (name TEXT, provider TEXT, PRIMARY KEY (name, provider))''')
-    conn.commit()
-    conn.close()
-
-def mark_episode_watched(series, season, episode, provider):
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute('''INSERT OR REPLACE INTO watched_episodes (series, season, episode, provider)
-                 VALUES (?, ?, ?, ?)''', (series, season, episode, provider))
-    conn.commit()
-    conn.close()
-
-def is_episode_watched(series, season, episode, provider):
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute('''SELECT 1 FROM watched_episodes WHERE series=? AND season=? AND episode=? AND provider=?''',
-              (series, season, episode, provider))
-    result = c.fetchone()
-    conn.close()
-    return result is not None
-
-def save_watchtime(series, season, episode, provider, time_str):
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute('''INSERT OR REPLACE INTO watchtime (series, season, episode, provider, time)
-                 VALUES (?, ?, ?, ?, ?)''', (series, season, episode, provider, time_str))
-    conn.commit()
-    conn.close()
-
-def get_unfinished_watchtime():
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute('SELECT series, season, episode, provider, time FROM watchtime')
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-def remove_watchtime(series, season, episode, provider):
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute('DELETE FROM watchtime WHERE series=? AND season=? AND episode=? AND provider=?',
-              (series, season, episode, provider))
-    conn.commit()
-    conn.close()
-
-def add_to_watchlist(series: SearchResult):
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO watchlist VALUES (?, ?)",
-              (series.name, series.provider_name))
-    conn.commit()
-    conn.close()
-
-def remove_from_watchlist(series: SearchResult):
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute("DELETE FROM watchlist WHERE name=? AND provider=?", (series.name, series.provider_name))
-    conn.commit()
-    conn.close()
-
-def is_in_watchlist(series: SearchResult) -> bool:
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute("SELECT 1 FROM watchlist WHERE name=? AND provider=?", (series.name, series.provider_name))
-    result = c.fetchone()
-    conn.close()
-    return result is not None
-
-def get_watchlist() -> list:
-    conn = sqlite3.connect(GUCKEN_DB)
-    c = conn.cursor()
-    c.execute("SELECT name, provider FROM watchlist")
-    rows = c.fetchall()
-    conn.close()
-    return rows  # [(name, provider_name), ...]
 
 def sort_favorite_lang(
         language_list: List[Language], pio_list: List[str]
