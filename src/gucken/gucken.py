@@ -938,6 +938,11 @@ class GuckenApp(App):
     async def open_info(self, name=None, provider=None) -> None:
         watchlist_btn = self.query_one("#watchlist_btn", Button)
 
+        if not gucken_settings_manager.settings["settings"]["image_display"]:
+            watchlist_btn.add_class("no_image")
+        else:
+            watchlist_btn.remove_class("no_image")
+
         # Falls name und provider übergeben werden, suche das passende SearchResult
         if name and provider:
             # Suche das passende SearchResult über beide Provider
