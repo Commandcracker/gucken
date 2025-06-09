@@ -1200,72 +1200,69 @@ class GuckenApp(App):
             sleep(0.1)
 
             resume_time = None
-        resume_time = None
 
-        try:
+            # only if mpv WIP
             while not self.app._exit:
-                sleep(0.1)
+                output = process.stderr.readline()
                 if process.poll() is not None:
                     break
-                output = process.stderr.readline()
                 if output:
-                    out_s = output.strip().decode(errors="ignore")
+                    out_s = output.strip().decode()
+                    # AV: 00:11:57 / 00:24:38 (49%) A-V:  0.000 Cache: 89s/22MB
                     if out_s.startswith("AV:"):
                         sp = out_s.split(" ")
-                        if len(sp) > 1:
-                            resume_time = sp[1]  # Format: HH:MM:SS
+                        resume_time = sp[1]
 
-            if resume_time is None or resume_time in ("00:00:00", "0:00:00"):
-                remove_watchtime(
-                    series_search_result.name,
-                    episode.season,
-                    episode.episode_number,
-                    series_search_result.provider_name
-                )
-                mark_episode_watched(
-                    series_search_result.name,
-                    episode.season,
-                    episode.episode_number,
-                    series_search_result.provider_name
-                )
-                logging.info("Episode als gesehen markiert und Watchtime entfernt.")
-            else:
-                save_watchtime(
-                    series_search_result.name,
-                    episode.season,
-                    episode.episode_number,
-                    series_search_result.provider_name,
-                    resume_time
-                )
-                logging.info("Resume-Time gespeichert: %s", resume_time)
-        finally:
-            if chapters_file:
-                try:
-                    remove(chapters_file.name)
-                except FileNotFoundError:
-                    pass
-            if self.RPC and self.RPC.sock_writer:
-                self.app.call_later(self.RPC.clear)
+            if resume_time:
+                logging.info("Resume: %s", resume_time)
 
-        exit_code = process.poll()
-        if exit_code is not None:
-            async def push_next_screen():
-                async def play_next(should_next):
-                    if should_next:
-                        self.play(
-                            series_search_result,
-                            episodes,
-                            index + 1,
+            exit_code = process.poll()
+
+            if exit_code is not None:
+                if chapters_file:
+                    try:
+                        remove(chapters_file.name)
+                    except FileNotFoundError:
+                        pass
+                if self.RPC and self.RPC.sock_writer:
+                    self.app.call_later(self.RPC.clear)
+
+                async def push_next_screen():
+                    async def play_next(should_next):
+                        if should_next:
+                            self.play(
+                                series_search_result,
+                                episodes,
+                                index + 1,
+                            )
+
+                    await self.app.push_screen(
+                        Next("Playing next episode in", no_time=is_android),
+                        callback=play_next,
+                    )
+
+                autoplay = gucken_settings_manager.settings["settings"]["autoplay"]["enabled"]
+                if not len(episodes) <= index + 1:
+                    if autoplay is True:
+                        self.app.call_later(push_next_screen)
+
+                        remove_watchtime(
+                            series_search_result.name,
+                            episode.season,
+                            episode.episode_number,
+                            series_search_result.provider_name
+                        )
+                        mark_episode_watched(
+                            series_search_result.name,
+                            episode.season,
+                            episode.episode_number,
+                            series_search_result.provider_name
                         )
 
-                await self.app.push_screen(
-                    Next("Playing next episode in", no_time=is_android),
-                    callback=play_next,
-                )
-
-            autoplay = gucken_settings_manager.settings["settings"]["autoplay"]["enabled"]
-            if len(episodes) > index + 1 and autoplay is True:
-                self.app.call_later(push_next_screen)
+                else:
+                    # TODO: ask to mark as completed
+                    pass
+                return
 
 
 exit_quotes = [
