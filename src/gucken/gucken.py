@@ -216,12 +216,21 @@ class PopularContainer(Container):
         anime_cards = []
         serien_cards = []
         image_tasks = []
+        semaphore = asyncio.Semaphore(20)  # Maximal 20 Bilder gleichzeitig laden
 
-        # Hilfsfunktion für das Nachladen der Bilder
+        # Gemeinsamer HTTP-Client für alle Requests
+        client = AsyncClient(verify=False)
+        image_cache = {}
+
         async def load_image(img_widget, url):
-            async with AsyncClient(verify=False) as client:
-                response = await client.get(url)
-                self.app.call_from_thread(lambda: setattr(img_widget, "image", BytesIO(response.content)))
+            async with semaphore:
+                if url in image_cache:
+                    img_data = image_cache[url]
+                else:
+                    response = await client.get(url)
+                    img_data = BytesIO(response.content)
+                    image_cache[url] = img_data
+                self.app.call_from_thread(lambda: setattr(img_widget, "image", img_data))
 
         # Karten ohne Bilder sofort bauen
         for entry in aniworld_results:
@@ -267,6 +276,7 @@ class PopularContainer(Container):
 
         # Bilder im Hintergrund nachladen, UI bleibt sofort nutzbar
         await asyncio.gather(*image_tasks)
+        await client.aclose()
         self.app.call_from_thread(lambda: self.set_loading(False))
 
     def on_click(self, event: events.Click) -> None:
